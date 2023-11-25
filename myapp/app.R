@@ -47,8 +47,8 @@ ui <- fluidPage(
                           actionButton("submit", "Soumettre mot de passe"),
                           br(),
                           
-                          uiOutput('hipp_id'),
-                          uiOutput('course_filter_ui'),
+                          # uiOutput('hipp_id'),
+                          # uiOutput('course_filter_ui'),
                           
                           # dateRangeInput("daterange",
                           #                "Période : " ,
@@ -396,10 +396,31 @@ server <- function(input, output, session) {
         locations = cells_column_labels(
           columns = c(driver_ratio_topp, trainer_ratio_topp, horse_ratio_topp))
       ) %>% 
+      tab_style(
+        style = list(
+          # cell_fill(color = "#F9E3D6"),
+          cell_text(style = "oblique")
+        ),
+        locations = cells_body(
+          columns = horseName,
+        )
+      ) %>% 
+      tab_style(
+        style = list(
+          # cell_fill(color = "#F9E3D6"),
+          cell_text(style = "oblique", size = px(12))
+        ),
+        locations = cells_body(
+          columns = c(trainerName, jockeyName)
+        )
+      ) %>% 
       cols_width(
         saddle ~ px(60),
         .pred_win ~ px(120),
+        trainerName ~ px(80),
+        jockeyName ~ px(80),
         everything() ~ px(100))
+    
     
     #   datatable(
     #   filtered %>% 

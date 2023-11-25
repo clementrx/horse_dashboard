@@ -8,7 +8,7 @@ library(ggplot2)
 library(gt)
 library(gtExtras)
 library(formattable)
-webr::install('plotly')
+# webr::install('plotly')
 
 # library(shinymanager)
 # library(highcharter)
@@ -53,7 +53,7 @@ ui <- fluidPage(
       # Graphique Highcharter
       # highchartOutput("mychart")
       
-      plotlyOutput("mychart"),
+      plotOutput("mychart"),
       
       # Tableau
       gt_output("mytable")
@@ -101,7 +101,7 @@ server <- function(input, output, session) {
   # output$mychart <- renderHighchart({
   #   filtered <- filtered_data()
   
-  output$mychart <- renderPlotly({
+  output$mychart <- renderPlot({
     filtered <- filtered_data()
     
     if (nrow(filtered) == 0 | !password_correct()) {
@@ -135,7 +135,7 @@ server <- function(input, output, session) {
                  color = "blue") +
       scale_x_continuous(labels = scales::percent_format(), limits = c(0, 1))
     
-    ggplotly(p)
+    p
     
   })
   

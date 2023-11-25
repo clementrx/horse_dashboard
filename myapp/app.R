@@ -38,7 +38,7 @@ ui <- fluidPage(
       selectInput("hippodrome", "Choisissez une Réunion", choices = unique(data$reunion_label)),
       uiOutput("course_filter"),
       
-      passwordInput("password", "Mot de passe"),
+      passwordInput("password", "Mot de passe svp"),
       # Bouton pour soumettre le mot de passe
       actionButton("submit", "Soumettre mot de passe")
       

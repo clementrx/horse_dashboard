@@ -13,9 +13,10 @@ library(formattable)
 
 # Charger les données
 data <- read.csv2('preds.csv', stringsAsFactors = FALSE)
-data = preds %>% 
+data = data %>% 
   arrange(R_pmuNumber, C_number) %>% 
-  distinct(horseName, saddle, C_uuid)
+  distinct(horseName, saddle, C_uuid, .keep_all = TRUE)
+
 data <- mutate(data, horse_label = paste0(saddle, '-', horseName))
 data <- mutate(data, reunion_label = paste0(R_pmuNumber, ' - ', R_name))
 data <- mutate(data, course_label = paste0(C_number, ' - ', C_name))
@@ -50,7 +51,7 @@ ui <- fluidPage(
       # Graphique Highcharter
       # highchartOutput("mychart")
       
-      plotOutput("mychart"),
+      plotlyOutput("mychart"),
       
       # Tableau
       gt_output("mytable")
@@ -98,7 +99,7 @@ server <- function(input, output, session) {
   # output$mychart <- renderHighchart({
   #   filtered <- filtered_data()
   
-  output$mychart <- renderPlot({
+  output$mychart <- renderPlotly({
     filtered <- filtered_data()
     
     if (nrow(filtered) == 0 | !password_correct()) {
@@ -120,7 +121,7 @@ server <- function(input, output, session) {
     # 
     # hc
     
-    ggplot(filtered, aes(x = .pred_win, y = reorder(horse_label, + .pred_win), label = paste0(round(.pred_win * 100, 2), "%"))) +
+    p <- ggplot(filtered, aes(x = .pred_win, y = reorder(horse_label, + .pred_win), label = paste0(round(.pred_win * 100, 2), "%"))) +
       geom_bar(stat = "identity") +
       labs(x = "Cheval", y = "Probabilité de gagner") +
       geom_text(position = position_dodge(width = .9),
@@ -131,6 +132,9 @@ server <- function(input, output, session) {
       geom_vline(xintercept = 0.9,
                  color = "blue") +
       scale_x_continuous(labels = scales::percent_format(), limits = c(0, 1))
+    
+    ggplotly(p)
+    
     
     
   })

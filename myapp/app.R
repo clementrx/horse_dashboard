@@ -8,9 +8,9 @@ library(ggplot2)
 library(gt)
 library(gtExtras)
 library(formattable)
+library(RColorBrewer)
+library(shinythemes)
 # webr::install('plotly')
-
-test
 
 # library(shinymanager)
 # library(highcharter)
@@ -33,35 +33,128 @@ data <- mutate(data, course_label = paste0(C_number, ' - ', C_name))
 #   stringsAsFactors = FALSE
 # )
 
+ui <- fluidPage(
+  
+  navbarPage(
+    theme = shinytheme('cerulean'),
+    
+    "PMU",
+    tabPanel("Connexion",
+             
+             sidebarPanel(width = 3,
+                          passwordInput("password", "Mot de passe svp"),
+                          #       # Bouton pour soumettre le mot de passe
+                          actionButton("submit", "Soumettre mot de passe"),
+                          br(),
+                          
+                          uiOutput('hipp_id'),
+                          uiOutput('course_filter_ui'),
+                          
+                          # dateRangeInput("daterange",
+                          #                "Période : " ,
+                          #                start = today()-90,
+                          #                end   = today(),
+                          #                # min = NULL,
+                          #                # max = NULL,
+                          #                format = "yyyy-mm-dd",
+                          #                # startview = "month",
+                          #                # weekstart = 0,
+                          #                language = "fr",
+                          #                separator = " à "),
+                          br()
+             ),
+             
+             
+             mainPanel(width = 9
+             )),
+    
+    tabPanel("Graphiques",
+             
+             sidebarPanel(width = 3,
+                          
+                          uiOutput('hipp_id_graph'),
+                          uiOutput('course_filter_ui_graph'),
+                          
+                          # dateRangeInput("daterange",
+                          #                "Période : " ,
+                          #                start = today()-90,
+                          #                end   = today(),
+                          #                # min = NULL,
+                          #                # max = NULL,
+                          #                format = "yyyy-mm-dd",
+                          #                # startview = "month",
+                          #                # weekstart = 0,
+                          #                language = "fr",
+                          #                separator = " à "),
+                          br()
+             ),
+             
+             
+             mainPanel(width = '100%',
+                       
+                       fluidRow(plotOutput("mychart"))
+             )),
+    tabPanel("Tableau",
+             
+             sidebarPanel(width = 3,
+                          
+                          uiOutput('hipp_id_tab'),
+                          uiOutput('course_filter_tab'),
+                          
+                          # dateRangeInput("daterange",
+                          #                "Période : " ,
+                          #                start = today()-90,
+                          #                end   = today(),
+                          #                # min = NULL,
+                          #                # max = NULL,
+                          #                format = "yyyy-mm-dd",
+                          #                # startview = "month",
+                          #                # weekstart = 0,
+                          #                language = "fr",
+                          #                separator = " à "),
+                          br()
+             ),
+             
+             
+             mainPanel(width = '100%',
+                       
+                       fluidRow(gt_output("mytable"))
+             ))
+    
+    
+  )
+  
+)
+
 
 # Définir l'interface utilisateur Shiny
-ui <- fluidPage(
-  titlePanel("Analyse des probabilités de gagner"),
-  
-  sidebarLayout(
-    sidebarPanel(
-      # Filtres
-      selectInput("hippodrome", "Choisissez une Réunion", choices = unique(data$reunion_label)),
-      uiOutput("course_filter"),
-      
-      passwordInput("password", "Mot de passe svp"),
-      # Bouton pour soumettre le mot de passe
-      actionButton("submit", "Soumettre mot de passe")
-      
-      
-    ),
-    
-    mainPanel(
-      # Graphique Highcharter
-      # highchartOutput("mychart")
-      
-      plotOutput("mychart"),
-      
-      # Tableau
-      gt_output("mytable")
-    )
-  )
-)
+# ui <- fluidPage(
+#   titlePanel("Analyse des probabilités de gagner"),
+#   
+#   sidebarLayout(
+#     sidebarPanel(
+#       # Filtres
+#       selectInput("hippodrome", "Choisissez une Réunion", choices = unique(data$reunion_label)),
+#       uiOutput("course_filter"),
+#       
+#       passwordInput("password", "Mot de passe svp"),
+#       # Bouton pour soumettre le mot de passe
+#       actionButton("submit", "Soumettre mot de passe")
+#       
+#       
+#     ),
+#     
+#     mainPanel(
+#       # Graphique Highcharter
+#       # highchartOutput("mychart")
+#       
+#       plotOutput("mychart"),
+#       
+#       # Tableau
+#       gt_output("mytable")
+#     )
+#   )
+# )
 
 # ui = secure_app(ui)
 
@@ -82,16 +175,89 @@ server <- function(input, output, session) {
     password_correct(input$password == "1234")
   })
   
+  output$hipp_id <- renderUI({
+    hipp = unique(data$reunion_label)
+    selectInput('hipp_filter_id', 'Réunion', hipp)
+  })
+  
+  output$hipp_id_graph <- renderUI({
+    hipp = unique(data$reunion_label)
+    selectInput('hipp_filter_id_graph', 'Réunion', hipp)
+  })
+  
+  output$hipp_id_tab <- renderUI({
+    hipp = unique(data$reunion_label)
+    selectInput('hipp_filter_id_tab', 'Réunion', hipp)
+  })
+  
+  
   # Mettre à jour les options du filtre de course en fonction de l'hippodrome sélectionné
-  output$course_filter <- renderUI({
-    selected_hippodrome <- input$hippodrome
+  output$course_filter_ui  <- renderUI({
+    selected_hippodrome <- input$hipp_filter_id
     courses <- unique(filter(data, reunion_label == selected_hippodrome)$course_label)
     selectInput("course_filter", "Choisissez une course", choices = courses)
   })
   
+  output$course_filter_ui_graph <- renderUI({
+    selected_hippodrome <- input$hipp_filter_id
+    courses <- unique(filter(data, reunion_label == selected_hippodrome)$course_label)
+    selectInput("course_filter_graph", "Choisissez une course", choices = courses)
+  })
+  
+  output$course_filter_tab  <- renderUI({
+    selected_hippodrome <- input$hipp_filter_id
+    courses <- unique(filter(data, reunion_label == selected_hippodrome)$course_label)
+    selectInput("course_filter_tab", "Choisissez une course", choices = courses)
+  })
+  
+  observe({
+    updateSelectInput(session, "hipp_filter_id_tab", selected = input$hipp_filter_id)
+    
+  })
+  observe({
+    updateSelectInput(session, "hipp_filter_id_tab", selected = input$hipp_filter_id_graph)
+  })
+  observe({
+    updateSelectInput(session, "hipp_filter_id", selected = input$hipp_filter_id_graph)
+  })
+  observe({
+    updateSelectInput(session, "hipp_filter_id", selected = input$hipp_filter_id_tab)
+  })
+  observe({
+    updateSelectInput(session, "hipp_filter_id_graph", selected = input$hipp_filter_id)
+  })
+  
+  
+  observe({
+    updateSelectInput(session, "course_filter_graph", selected = input$course_filter)
+  })
+  observe({
+    updateSelectInput(session, "course_filter", selected = input$course_filter_graph)
+  })
+  observe({
+    updateSelectInput(session, "course_filter", selected = input$course_filter_tab)
+  })
+  observe({
+    updateSelectInput(session, "course_filter_tab", selected = input$course_filter_graph)
+  })
+  observe({
+    updateSelectInput(session, "course_filter_tab", selected = input$course_filter)
+  })
+  
+  # observe({
+  #   cur_val <- output$hipp_id
+  #   # This observer depends on text2 and updates text1 with any changes
+  #   if (cur_val != input$text2){
+  #     # Then we assume text2 hasn't yet been updated
+  #     updateTextInput(session, "text1", NULL, input$text2)
+  #     cur_val <<- input$text2
+  #   }
+  # })
+  
+  
   # Fonction de filtrage des données
   filtered_data <- reactive({
-    filter(data, reunion_label == input$hippodrome, course_label == input$course_filter)
+    filter(data, reunion_label == input$hipp_filter_id, course_label == input$course_filter)
   })
   
   # Réaction pour mettre à jour les données filtrées
@@ -125,8 +291,16 @@ server <- function(input, output, session) {
     # 
     # hc
     
-    p =ggplot(filtered, aes(x = .pred_win, y = reorder(horse_label, + .pred_win), label = paste0(round(.pred_win * 100, 2), "%"))) +
-      geom_bar(stat = "identity") +
+    nb.cols <- nrow(filtered)
+    mycolors <- colorRampPalette(c("#2CA25F", "red"))(nb.cols)
+    
+    filtered = cbind(filtered %>% 
+                   arrange(desc(.pred_win)),
+                 mycolors)
+    
+    ggplot(filtered, aes(x = .pred_win, y = reorder(horse_label,  .pred_win), 
+                     label = paste0(round(.pred_win * 100, 2), "%"))) +
+      geom_bar(stat = "identity", fill = mycolors) +
       labs(x = "Cheval", y = "Probabilité de gagner") +
       geom_text(position = position_dodge(width = .9),
                 hjust = -0.5,
@@ -135,9 +309,11 @@ server <- function(input, output, session) {
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
       geom_vline(xintercept = 0.9,
                  color = "blue") +
-      scale_x_continuous(labels = scales::percent_format(), limits = c(0, 1))
-    
-    p
+      scale_x_continuous(labels = scales::percent_format(), limits = c(0, 1),
+                         breaks = seq(0, 1, 0.1))+
+      scale_fill_gradientn(colors = mycolors, limits = c(0, 1)) +
+      theme(axis.text=element_text(size=12, face="bold"),
+            axis.title=element_text(size=14,face="bold"))
     
   })
   
@@ -149,21 +325,21 @@ server <- function(input, output, session) {
       return(NULL)
     }
     
-    
-    
     filtered %>% 
       select(saddle, horseName, trainerName, jockeyName, 
              #totalPrize,
              driver_ratio_topp, trainer_ratio_topp, horse_ratio_topp,
              mean_ratio_temps_last24_month_hipp, mean_ratio_temps_last12_month,
-             fav_ko_last, outsider_last, .pred_win) %>%
+             # fav_ko_last, outsider_last,
+             .pred_win) %>%
       arrange(desc(.pred_win)) %>%  
-      mutate(.pred_win = formattable::percent(.pred_win),
-             mean_ratio_temps_last24_month_hipp = digits(mean_ratio_temps_last24_month_hipp, 2),
-             mean_ratio_temps_last12_month = digits(mean_ratio_temps_last12_month, 2),
-             driver_ratio_topp = driver_ratio_topp*100,
-             trainer_ratio_topp = trainer_ratio_topp*100,
-             horse_ratio_topp = horse_ratio_topp*100) %>% 
+      mutate(#.pred_win = formattable::percent(.pred_win),
+        .pred_win = .pred_win*100,
+        mean_ratio_temps_last24_month_hipp = digits(mean_ratio_temps_last24_month_hipp, 2),
+        mean_ratio_temps_last12_month = digits(mean_ratio_temps_last12_month, 2),
+        driver_ratio_topp = driver_ratio_topp*100,
+        trainer_ratio_topp = trainer_ratio_topp*100,
+        horse_ratio_topp = horse_ratio_topp*100) %>% 
       gt() %>%
       gt_theme_espn() %>% 
       cols_label(
@@ -177,32 +353,53 @@ server <- function(input, output, session) {
         horse_ratio_topp = "Ratio<br>Cheval",
         mean_ratio_temps_last24_month_hipp = 'Temps<br>Piste',
         mean_ratio_temps_last12_month = 'Temps<br>1 an',
-        fav_ko_last = 'Fav<br>Dernière course',
-        outsider_last = 'Outsider<br>Dernière course',
+        # fav_ko_last = 'Fav<br>Dernière course',
+        # outsider_last = 'Outsider<br>Dernière course',
         .fn = md) %>% 
-      gt_color_rows(.pred_win, palette = "ggsci::blue_material", domain = c(0,1)) %>% 
+      # gt_color_rows(.pred_win, palette = "ggsci::blue_material", domain = c(0,1)) %>% 
+      gt_color_rows(mean_ratio_temps_last24_month_hipp, palette = "ggsci::green_material", direction = -1) %>% 
+      gt_color_rows(mean_ratio_temps_last12_month, palette = "ggsci::teal_material", direction = -1) %>% 
       gt_plt_bar_pct(
         column = driver_ratio_topp,
         scaled = TRUE,
         labels = TRUE,
         decimals = 2,
         label_cutoff = 0.1,
-        fill = "blue", background = "lightblue"
+        fill = "#FFD700", background = "lightblue"
       ) %>% 
       gt_plt_bar_pct(
         column = trainer_ratio_topp,
         scaled = TRUE,
         labels = TRUE,
         label_cutoff = 0.1,
-        fill = "blue", background = "lightblue"
+        fill = "#4682B4", background = "lightblue"
       ) %>% 
       gt_plt_bar_pct(
         column = horse_ratio_topp,
         scaled = TRUE,
         labels = TRUE,
         label_cutoff = 0.1,
-        fill = "blue", background = "lightblue"
-      ) 
+        fill = "#8B4513", background = "lightblue"
+      ) %>% 
+      gt_plt_bar_pct(
+        column = .pred_win,
+        scaled = TRUE,
+        labels = TRUE,
+        decimals = 3,
+        label_cutoff = 0.1,
+        fill = "#2CA25F", background = "lightblue",
+        font_size = '13px'
+        # height = '17px'
+      ) %>% 
+      tab_footnote(
+        footnote = "% d'arrivées placées lors des 12 derniers mois",
+        locations = cells_column_labels(
+          columns = c(driver_ratio_topp, trainer_ratio_topp, horse_ratio_topp))
+      ) %>% 
+      cols_width(
+        saddle ~ px(60),
+        .pred_win ~ px(120),
+        everything() ~ px(100))
     
     #   datatable(
     #   filtered %>% 

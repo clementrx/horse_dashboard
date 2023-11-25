@@ -8,6 +8,7 @@ library(ggplot2)
 library(gt)
 library(gtExtras)
 library(formattable)
+library(shinymanager)
 # library(highcharter)
 
 # Charger les données
@@ -18,8 +19,36 @@ data <- mutate(data, horse_label = paste0(saddle, '-', horseName))
 data <- mutate(data, reunion_label = paste0(R_pmuNumber, ' - ', R_name))
 data <- mutate(data, course_label = paste0(C_number, ' - ', C_name))
 
+inactivity <- "function idleTimer() {
+var t = setTimeout(logout, 120000);
+window.onmousemove = resetTimer; // catches mouse movements
+window.onmousedown = resetTimer; // catches mouse movements
+window.onclick = resetTimer;     // catches mouse clicks
+window.onscroll = resetTimer;    // catches scrolling
+window.onkeypress = resetTimer;  //catches keyboard actions
+
+function logout() {
+window.close();  //close the window
+}
+
+function resetTimer() {
+clearTimeout(t);
+t = setTimeout(logout, 120000);  // time is in milliseconds (1000 is 1 second)
+}
+}
+idleTimer();"
+
+
+# data.frame with credentials info
+credentials <- data.frame(
+  user = c("test", "fanny", "victor", "benoit"),
+  password = c("1234", "azerty", "12345", "azerty"),
+  # comment = c("alsace", "auvergne", "bretagne"), %>% 
+  stringsAsFactors = FALSE
+)
+
 # Définir l'interface utilisateur Shiny
-ui <- fluidPage(
+ui <- secure_app(head_auth = tags$script(inactivity),fluidPage(
   titlePanel("Analyse des probabilités de gagner"),
   
   sidebarLayout(
@@ -41,10 +70,16 @@ ui <- fluidPage(
       
     )
   )
-)
+))
 
 # Définir le serveur Shiny
 server <- function(input, output) {
+  
+  result_auth <- secure_server(check_credentials = check_credentials(credentials))
+  
+  output$res_auth <- renderPrint({
+    reactiveValuesToList(result_auth)
+  })
   
   # Mettre à jour les options du filtre de course en fonction de l'hippodrome sélectionné
   output$course_filter <- renderUI({

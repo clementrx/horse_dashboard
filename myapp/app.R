@@ -13,8 +13,9 @@ library(formattable)
 
 # Charger les données
 data <- read.csv2('preds.csv', stringsAsFactors = FALSE)
-data = data %>% 
-  arrange(R_pmuNumber, C_number)
+data = preds %>% 
+  arrange(R_pmuNumber, C_number) %>% 
+  distinct(horseName, saddle, C_uuid)
 data <- mutate(data, horse_label = paste0(saddle, '-', horseName))
 data <- mutate(data, reunion_label = paste0(R_pmuNumber, ' - ', R_name))
 data <- mutate(data, course_label = paste0(C_number, ' - ', C_name))

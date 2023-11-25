@@ -8,7 +8,7 @@ library(ggplot2)
 library(gt)
 library(gtExtras)
 library(formattable)
-library(shinymanager)
+# library(shinymanager)
 # library(highcharter)
 
 # Charger les données
@@ -20,12 +20,12 @@ data <- mutate(data, reunion_label = paste0(R_pmuNumber, ' - ', R_name))
 data <- mutate(data, course_label = paste0(C_number, ' - ', C_name))
 
 # data.frame with credentials info
-credentials <- data.frame(
-  user = c("test", "fanny", "victor", "benoit"),
-  password = c("1234", "azerty", "12345", "azerty"),
-  # comment = c("alsace", "auvergne", "bretagne"), %>% 
-  stringsAsFactors = FALSE
-)
+# credentials <- data.frame(
+#   user = c("test", "fanny", "victor", "benoit"),
+#   password = c("1234", "azerty", "12345", "azerty"),
+#   # comment = c("alsace", "auvergne", "bretagne"), %>% 
+#   stringsAsFactors = FALSE
+# )
 
 
 # Définir l'interface utilisateur Shiny
@@ -36,7 +36,11 @@ ui <- fluidPage(
     sidebarPanel(
       # Filtres
       selectInput("hippodrome", "Choisissez une Réunion", choices = unique(data$reunion_label)),
-      uiOutput("course_filter") 
+      uiOutput("course_filter"),
+      
+      passwordInput("password", "Mot de passe"),
+      # Bouton pour soumettre le mot de passe
+      actionButton("submit", "Soumettre mot de passe")
       
       
     ),
@@ -44,26 +48,32 @@ ui <- fluidPage(
     mainPanel(
       # Graphique Highcharter
       # highchartOutput("mychart")
+      
       plotOutput("mychart"),
       
       # Tableau
       gt_output("mytable")
-      
     )
   )
 )
 
-ui = secure_app(ui)
+# ui = secure_app(ui)
 
 
 
 # Définir le serveur Shiny
 server <- function(input, output, session) {
   
-  result_auth <- secure_server(check_credentials = check_credentials(credentials))
+  # result_auth <- secure_server(check_credentials = check_credentials(credentials))
+  # 
+  # output$auth_output <- renderPrint({
+  #   reactiveValuesToList(result_auth)
+  # })
   
-  output$auth_output <- renderPrint({
-    reactiveValuesToList(result_auth)
+  password_correct <- reactiveVal(FALSE)
+  observeEvent(input$submit, {
+    # Vérifier le mot de passe
+    password_correct(input$password == "1234")
   })
   
   # Mettre à jour les options du filtre de course en fonction de l'hippodrome sélectionné
@@ -90,7 +100,7 @@ server <- function(input, output, session) {
   output$mychart <- renderPlot({
     filtered <- filtered_data()
     
-    if (nrow(filtered) == 0) {
+    if (nrow(filtered) == 0 | !password_correct()) {
       return(NULL)
     }
     
@@ -128,7 +138,7 @@ server <- function(input, output, session) {
   output$mytable <- render_gt({
     
     filtered <- filtered_data()
-    if (nrow(filtered) == 0) {
+    if (nrow(filtered) == 0 | !password_correct()) {
       return(NULL)
     }
     

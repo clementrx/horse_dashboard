@@ -47,8 +47,8 @@ ui <- fluidPage(
                           actionButton("submit", "Soumettre mot de passe"),
                           br(),
                           
-                          # uiOutput('hipp_id'),
-                          # uiOutput('course_filter_ui'),
+                          uiOutput('hipp_id'),
+                          uiOutput('course_filter_ui'),
                           
                           # dateRangeInput("daterange",
                           #                "Période : " ,

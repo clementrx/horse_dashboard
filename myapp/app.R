@@ -153,7 +153,10 @@ server <- function(input, output, session) {
                  arrange(desc(.pred_win)) %>%  
       mutate(.pred_win = formattable::percent(.pred_win),
              mean_ratio_temps_last24_month_hipp = digits(mean_ratio_temps_last24_month_hipp, 2),
-             mean_ratio_temps_last12_month = digits(mean_ratio_temps_last12_month, 2)) %>% 
+             mean_ratio_temps_last12_month = digits(mean_ratio_temps_last12_month, 2),
+             driver_ratio_topp = driver_ratio_topp*100,
+             trainer_ratio_topp = trainer_ratio_topp*100,
+             horse_ratio_topp = horse_ratio_topp*100) %>% 
       gt() %>%
       gt_theme_espn() %>% 
       cols_label(
@@ -173,20 +176,24 @@ server <- function(input, output, session) {
       gt_color_rows(.pred_win, palette = "ggsci::blue_material", domain = c(0,1)) %>% 
       gt_plt_bar_pct(
         column = driver_ratio_topp,
-        scaled = FALSE,
+        scaled = TRUE,
         labels = TRUE,
+        decimals = 2,
+        label_cutoff = 0.1,
         fill = "blue", background = "lightblue"
       ) %>% 
       gt_plt_bar_pct(
         column = trainer_ratio_topp,
-        scaled = FALSE,
+        scaled = TRUE,
         labels = TRUE,
+        label_cutoff = 0.1,
         fill = "blue", background = "lightblue"
       ) %>% 
       gt_plt_bar_pct(
         column = horse_ratio_topp,
-        scaled = FALSE,
+        scaled = TRUE,
         labels = TRUE,
+        label_cutoff = 0.1,
         fill = "blue", background = "lightblue"
       ) 
       

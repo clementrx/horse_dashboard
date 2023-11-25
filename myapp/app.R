@@ -5,10 +5,9 @@
 library(shiny)
 library(dplyr)
 library(highcharter)
-library(here)
 
 # Charger les données
-data <- read.csv2(here("data", "preds.csv"), stringsAsFactors = FALSE)
+data <- read.csv2('preds.csv', stringsAsFactors = FALSE)
 data <- mutate(data, horse_label = paste0(saddle, '-', horseName))
 data <- mutate(data, course_label = paste0(C_number, ' - ', C_name))
 

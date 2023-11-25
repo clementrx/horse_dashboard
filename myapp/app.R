@@ -4,7 +4,8 @@
 # Charger les packages
 library(shiny)
 library(dplyr)
-library(highcharter)
+library(ggplot2)
+# library(highcharter)
 
 # Charger les données
 data <- read.csv2('preds.csv', stringsAsFactors = FALSE)
@@ -26,7 +27,9 @@ ui <- fluidPage(
     
     mainPanel(
       # Graphique Highcharter
-      highchartOutput("mychart")
+      # highchartOutput("mychart")
+      plotOutput("mychart")
+      
     )
   )
 )
@@ -52,27 +55,40 @@ server <- function(input, output) {
   })
   
   # Créer le graphique Highcharter
-  output$mychart <- renderHighchart({
+  # output$mychart <- renderHighchart({
+  #   filtered <- filtered_data()
+  
+  output$mychart <- renderPlot({
     filtered <- filtered_data()
     
     if (nrow(filtered) == 0) {
       return(NULL)
     }
     
-    hc = highchart() %>%
-      hc_chart(type = "bar") %>%
-      hc_yAxis(title = list(text = "Probabilité de gagner")) %>%
-      hc_xAxis(categories = filtered$horse_label, title = list(text = "Cheval")) %>%
-      hc_add_series(
-        name = "Probabilité de gagner",
-        data = filtered$.pred_win,
-        dataLabels = list(
-          enabled = TRUE,
-          formatter = JS("function() { return Highcharts.numberFormat(this.y * 100, 2) + '%'; }")
-        )
-      )
+    # hc = highchart() %>%
+    #   hc_chart(type = "bar") %>%
+    #   hc_yAxis(title = list(text = "Probabilité de gagner")) %>%
+    #   hc_xAxis(categories = filtered$horse_label, title = list(text = "Cheval")) %>%
+    #   hc_add_series(
+    #     name = "Probabilité de gagner",
+    #     data = filtered$.pred_win,
+    #     dataLabels = list(
+    #       enabled = TRUE,
+    #       formatter = JS("function() { return Highcharts.numberFormat(this.y * 100, 2) + '%'; }")
+    #     )
+    #   )
+    # 
+    # hc
     
-    hc
+    ggplot(filtered, aes(x = horse_label, y = .pred_win)) +
+      geom_bar(stat = "identity") +
+      labs(x = "Cheval", y = "Probabilité de gagner") +
+      geom_text(aes(label = paste0(round(.pred_win * 100, 2), "%")),
+                position = position_stack(vjust = 0.5),
+                size = 3) +
+      coord_flip() +
+      theme_minimal()
+    
   })
 }
 

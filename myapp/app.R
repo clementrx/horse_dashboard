@@ -8,6 +8,8 @@ library(ggplot2)
 library(gt)
 library(gtExtras)
 library(formattable)
+webr::install('plotly')
+
 # library(shinymanager)
 # library(highcharter)
 
@@ -51,7 +53,7 @@ ui <- fluidPage(
       # Graphique Highcharter
       # highchartOutput("mychart")
       
-      plotOutput("mychart"),
+      plotlyOutput("mychart"),
       
       # Tableau
       gt_output("mytable")
@@ -99,7 +101,7 @@ server <- function(input, output, session) {
   # output$mychart <- renderHighchart({
   #   filtered <- filtered_data()
   
-  output$mychart <- renderPlot({
+  output$mychart <- renderPlotly({
     filtered <- filtered_data()
     
     if (nrow(filtered) == 0 | !password_correct()) {
@@ -121,7 +123,7 @@ server <- function(input, output, session) {
     # 
     # hc
     
-    ggplot(filtered, aes(x = .pred_win, y = reorder(horse_label, + .pred_win), label = paste0(round(.pred_win * 100, 2), "%"))) +
+    p =ggplot(filtered, aes(x = .pred_win, y = reorder(horse_label, + .pred_win), label = paste0(round(.pred_win * 100, 2), "%"))) +
       geom_bar(stat = "identity") +
       labs(x = "Cheval", y = "Probabilité de gagner") +
       geom_text(position = position_dodge(width = .9),
@@ -133,7 +135,7 @@ server <- function(input, output, session) {
                  color = "blue") +
       scale_x_continuous(labels = scales::percent_format(), limits = c(0, 1))
     
-    
+    ggplotly(p)
     
   })
   

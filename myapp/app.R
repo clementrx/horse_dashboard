@@ -51,7 +51,7 @@ ui <- fluidPage(
       # Graphique Highcharter
       # highchartOutput("mychart")
       
-      plotlyOutput("mychart"),
+      plotOutput("mychart"),
       
       # Tableau
       gt_output("mytable")
@@ -99,7 +99,7 @@ server <- function(input, output, session) {
   # output$mychart <- renderHighchart({
   #   filtered <- filtered_data()
   
-  output$mychart <- renderPlotly({
+  output$mychart <- renderPlot({
     filtered <- filtered_data()
     
     if (nrow(filtered) == 0 | !password_correct()) {
@@ -121,7 +121,7 @@ server <- function(input, output, session) {
     # 
     # hc
     
-    p <- ggplot(filtered, aes(x = .pred_win, y = reorder(horse_label, + .pred_win), label = paste0(round(.pred_win * 100, 2), "%"))) +
+    ggplot(filtered, aes(x = .pred_win, y = reorder(horse_label, + .pred_win), label = paste0(round(.pred_win * 100, 2), "%"))) +
       geom_bar(stat = "identity") +
       labs(x = "Cheval", y = "Probabilité de gagner") +
       geom_text(position = position_dodge(width = .9),
@@ -132,8 +132,6 @@ server <- function(input, output, session) {
       geom_vline(xintercept = 0.9,
                  color = "blue") +
       scale_x_continuous(labels = scales::percent_format(), limits = c(0, 1))
-    
-    ggplotly(p)
     
     
     
@@ -148,14 +146,14 @@ server <- function(input, output, session) {
     }
     
     
-   
+    
     filtered %>% 
       select(saddle, horseName, trainerName, jockeyName, 
-                        #totalPrize,
-                        driver_ratio_topp, trainer_ratio_topp, horse_ratio_topp,
-                        mean_ratio_temps_last24_month_hipp, mean_ratio_temps_last12_month,
-                        fav_ko_last, outsider_last, .pred_win) %>%
-                 arrange(desc(.pred_win)) %>%  
+             #totalPrize,
+             driver_ratio_topp, trainer_ratio_topp, horse_ratio_topp,
+             mean_ratio_temps_last24_month_hipp, mean_ratio_temps_last12_month,
+             fav_ko_last, outsider_last, .pred_win) %>%
+      arrange(desc(.pred_win)) %>%  
       mutate(.pred_win = formattable::percent(.pred_win),
              mean_ratio_temps_last24_month_hipp = digits(mean_ratio_temps_last24_month_hipp, 2),
              mean_ratio_temps_last12_month = digits(mean_ratio_temps_last12_month, 2),
@@ -201,30 +199,30 @@ server <- function(input, output, session) {
         label_cutoff = 0.1,
         fill = "blue", background = "lightblue"
       ) 
-      
-  #   datatable(
-  #   filtered %>% 
-  #     select(saddle, horseName, trainerName, jockeyName, 
-  #            #totalPrize,
-  #            driver_ratio_topp, trainer_ratio_topp, horse_ratio_topp,
-  #            mean_ratio_temps_last24_month_hipp, mean_ratio_temps_last12_month,
-  #            fav_ko_last, outsider_last, .pred_win) %>% 
-  #     arrange(desc(.pred_win)),
-  #   colnames = c('Temps hipp' = 'mean_ratio_temps_last24_month_hipp',
-  #                'Temps 365' = 'mean_ratio_temps_last12_month',
-  #                'Numéros' = 'saddle',
-  #                'Cheval' = 'horseName',
-  #                'Entraineur' = 'trainerName',
-  #                'Jockey' = 'jockeyName',
-  #                'Ratio Driver' = 'driver_ratio_topp',
-  #                'Ratio Entr.' = 'trainer_ratio_topp',
-  #                'Ratio Cheval' = 'horse_ratio_topp'),
-  #   options = list(dom = 't'),
-  #   rownames = FALSE # Supprimer la colonne de numérotation des lignes
-  # ) %>% 
-  #   formatPercentage(columns = c("Ratio Driver", "Ratio Entr.", 'Ratio Cheval', '.pred_win'), digits = 2) %>% 
-  #     # Remplacez "col1", "col2", ... par les noms des colonnes à formater en pourcentage
-  #   formatRound(columns = c("Temps hipp", "Temps 365"), digits = 2) 
+    
+    #   datatable(
+    #   filtered %>% 
+    #     select(saddle, horseName, trainerName, jockeyName, 
+    #            #totalPrize,
+    #            driver_ratio_topp, trainer_ratio_topp, horse_ratio_topp,
+    #            mean_ratio_temps_last24_month_hipp, mean_ratio_temps_last12_month,
+    #            fav_ko_last, outsider_last, .pred_win) %>% 
+    #     arrange(desc(.pred_win)),
+    #   colnames = c('Temps hipp' = 'mean_ratio_temps_last24_month_hipp',
+    #                'Temps 365' = 'mean_ratio_temps_last12_month',
+    #                'Numéros' = 'saddle',
+    #                'Cheval' = 'horseName',
+    #                'Entraineur' = 'trainerName',
+    #                'Jockey' = 'jockeyName',
+    #                'Ratio Driver' = 'driver_ratio_topp',
+    #                'Ratio Entr.' = 'trainer_ratio_topp',
+    #                'Ratio Cheval' = 'horse_ratio_topp'),
+    #   options = list(dom = 't'),
+    #   rownames = FALSE # Supprimer la colonne de numérotation des lignes
+    # ) %>% 
+    #   formatPercentage(columns = c("Ratio Driver", "Ratio Entr.", 'Ratio Cheval', '.pred_win'), digits = 2) %>% 
+    #     # Remplacez "col1", "col2", ... par les noms des colonnes à formater en pourcentage
+    #   formatRound(columns = c("Temps hipp", "Temps 365"), digits = 2) 
     
   })
   

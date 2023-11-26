@@ -25,6 +25,9 @@ data <- mutate(data, horse_label = paste0(saddle, '-', horseName))
 data <- mutate(data, reunion_label = paste0(R_pmuNumber, ' - ', R_name))
 data <- mutate(data, course_label = paste0(C_number, ' - ', C_name))
 
+up_arrow <- "<span style=\"color:green\">&#9650;</span>"
+down_arrow <- "<span style=\"color:red\">&#9660;</span>"
+
 # data.frame with credentials info
 # credentials <- data.frame(
 #   user = c("test", "fanny", "victor", "benoit"),
@@ -47,8 +50,11 @@ ui <- fluidPage(
                           actionButton("submit", "Soumettre mot de passe"),
                           br(),
                           
-                          uiOutput('hipp_id'),
-                          uiOutput('course_filter_ui'),
+                          uiOutput('hipp_id_graph'),
+                          uiOutput('course_filter_ui_graph'),
+                          # 
+                          # uiOutput('hipp_id'),
+                          # uiOutput('course_filter_ui'),
                           
                           # dateRangeInput("daterange",
                           #                "Période : " ,
@@ -72,8 +78,8 @@ ui <- fluidPage(
              
              sidebarPanel(width = 3,
                           
-                          uiOutput('hipp_id_graph'),
-                          uiOutput('course_filter_ui_graph'),
+                          # uiOutput('hipp_id_graph'),
+                          # uiOutput('course_filter_ui_graph'),
                           
                           # dateRangeInput("daterange",
                           #                "Période : " ,
@@ -98,8 +104,8 @@ ui <- fluidPage(
              
              sidebarPanel(width = 3,
                           
-                          uiOutput('hipp_id_tab'),
-                          uiOutput('course_filter_tab'),
+                          # uiOutput('hipp_id_tab'),
+                          # uiOutput('course_filter_tab'),
                           
                           # dateRangeInput("daterange",
                           #                "Période : " ,
@@ -172,77 +178,57 @@ server <- function(input, output, session) {
   password_correct <- reactiveVal(FALSE)
   observeEvent(input$submit, {
     # Vérifier le mot de passe
-    password_correct(input$password == "1234")
+    password_correct(input$password == "forbach")
   })
   
-  output$hipp_id <- renderUI({
-    hipp = unique(data$reunion_label)
-    selectInput('hipp_filter_id', 'Réunion', hipp)
-  })
+  # output$hipp_id <- renderUI({
+  #   hipp = unique(data$reunion_label)
+  #   selectInput('hipp_filter_id', 'Réunion', hipp)
+  # })
   
   output$hipp_id_graph <- renderUI({
     hipp = unique(data$reunion_label)
     selectInput('hipp_filter_id_graph', 'Réunion', hipp)
   })
   
-  output$hipp_id_tab <- renderUI({
-    hipp = unique(data$reunion_label)
-    selectInput('hipp_filter_id_tab', 'Réunion', hipp)
-  })
+  # output$hipp_id_tab <- renderUI({
+  #   hipp = unique(data$reunion_label)
+  #   selectInput('hipp_filter_id_tab', 'Réunion', hipp)
+  # })
   
   
   # Mettre à jour les options du filtre de course en fonction de l'hippodrome sélectionné
-  output$course_filter_ui  <- renderUI({
-    selected_hippodrome <- input$hipp_filter_id
-    courses <- unique(filter(data, reunion_label == selected_hippodrome)$course_label)
-    selectInput("course_filter", "Choisissez une course", choices = courses)
-  })
+  # output$course_filter_ui  <- renderUI({
+  #   selected_hippodrome <- input$hipp_filter_id
+  #   courses <- unique(filter(data, reunion_label == selected_hippodrome)$course_label)
+  #   selectInput("course_filter", "Choisissez une course", choices = courses)
+  # })
   
   output$course_filter_ui_graph <- renderUI({
-    selected_hippodrome <- input$hipp_filter_id
+    selected_hippodrome <- input$hipp_filter_id_graph
     courses <- unique(filter(data, reunion_label == selected_hippodrome)$course_label)
     selectInput("course_filter_graph", "Choisissez une course", choices = courses)
   })
   
-  output$course_filter_tab  <- renderUI({
-    selected_hippodrome <- input$hipp_filter_id
-    courses <- unique(filter(data, reunion_label == selected_hippodrome)$course_label)
-    selectInput("course_filter_tab", "Choisissez une course", choices = courses)
-  })
+  # output$course_filter_tab  <- renderUI({
+  #   selected_hippodrome <- input$hipp_filter_id_graph
+  #   courses <- unique(filter(data, reunion_label == selected_hippodrome)$course_label)
+  #   selectInput("course_filter_tab", "Choisissez une course", choices = courses)
+  # })
   
-  observe({
-    updateSelectInput(session, "hipp_filter_id_tab", selected = input$hipp_filter_id)
-    
-  })
-  observe({
-    updateSelectInput(session, "hipp_filter_id_tab", selected = input$hipp_filter_id_graph)
-  })
-  observe({
-    updateSelectInput(session, "hipp_filter_id", selected = input$hipp_filter_id_graph)
-  })
-  observe({
-    updateSelectInput(session, "hipp_filter_id", selected = input$hipp_filter_id_tab)
-  })
-  observe({
-    updateSelectInput(session, "hipp_filter_id_graph", selected = input$hipp_filter_id)
-  })
-  
-  
-  observe({
-    updateSelectInput(session, "course_filter_graph", selected = input$course_filter)
-  })
-  observe({
-    updateSelectInput(session, "course_filter", selected = input$course_filter_graph)
-  })
-  observe({
-    updateSelectInput(session, "course_filter", selected = input$course_filter_tab)
-  })
-  observe({
-    updateSelectInput(session, "course_filter_tab", selected = input$course_filter_graph)
-  })
-  observe({
-    updateSelectInput(session, "course_filter_tab", selected = input$course_filter)
-  })
+  # observe({
+  #   updateSelectInput(session, "hipp_filter_id_tab", selected = input$hipp_filter_id_graph)
+  # })
+  # observe({
+  #   updateSelectInput(session, "hipp_filter_id_graph", selected = input$hipp_filter_id_tab)
+  # })
+  # 
+  # observe({
+  #   updateSelectInput(session, "course_filter_graph", selected = input$course_filter_tab)
+  # })
+  # observe({
+  #   updateSelectInput(session, "course_filter_tab", selected = input$course_filter_graph)
+  # })
   
   # observe({
   #   cur_val <- output$hipp_id
@@ -257,7 +243,7 @@ server <- function(input, output, session) {
   
   # Fonction de filtrage des données
   filtered_data <- reactive({
-    filter(data, reunion_label == input$hipp_filter_id, course_label == input$course_filter)
+    filter(data, reunion_label == input$hipp_filter_id_graph, course_label == input$course_filter_graph)
   })
   
   # Réaction pour mettre à jour les données filtrées
@@ -301,13 +287,13 @@ server <- function(input, output, session) {
     ggplot(filtered, aes(x = .pred_win, y = reorder(horse_label,  .pred_win), 
                      label = paste0(round(.pred_win * 100, 2), "%"))) +
       geom_bar(stat = "identity", fill = mycolors) +
-      labs(x = "Cheval", y = "Probabilité de gagner") +
+      labs(x = "Probabilité de finir SP", y = "Cheval") +
       geom_text(position = position_dodge(width = .9),
                 hjust = -0.5,
                 size = 3) +
       theme_minimal() +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      geom_vline(xintercept = 0.9,
+      geom_vline(xintercept = 0.8,
                  color = "blue") +
       scale_x_continuous(labels = scales::percent_format(), limits = c(0, 1),
                          breaks = seq(0, 1, 0.1))+
@@ -329,14 +315,15 @@ server <- function(input, output, session) {
       select(saddle, horseName, trainerName, jockeyName, 
              #totalPrize,
              driver_ratio_topp, trainer_ratio_topp, horse_ratio_topp,
-             mean_ratio_temps_last24_month_hipp, mean_ratio_temps_last12_month,
+             mean_redkill_last12_month, mean_redkill_last24_month_hipp,
+             driver_ratio_topp_evol, jour_last_course,
              # fav_ko_last, outsider_last,
              .pred_win) %>%
       arrange(desc(.pred_win)) %>%  
       mutate(#.pred_win = formattable::percent(.pred_win),
         .pred_win = .pred_win*100,
-        mean_ratio_temps_last24_month_hipp = digits(mean_ratio_temps_last24_month_hipp, 2),
-        mean_ratio_temps_last12_month = digits(mean_ratio_temps_last12_month, 2),
+        mean_redkill_last12_month = digits(mean_redkill_last12_month, 2),
+        mean_redkill_last24_month_hipp = digits(mean_redkill_last24_month_hipp, 2),
         driver_ratio_topp = driver_ratio_topp*100,
         trainer_ratio_topp = trainer_ratio_topp*100,
         horse_ratio_topp = horse_ratio_topp*100) %>% 
@@ -351,14 +338,15 @@ server <- function(input, output, session) {
         driver_ratio_topp = "Ratio<br>Jockey",
         trainer_ratio_topp = "Ratio<br>Entr.",
         horse_ratio_topp = "Ratio<br>Cheval",
-        mean_ratio_temps_last24_month_hipp = 'Temps<br>Piste',
-        mean_ratio_temps_last12_month = 'Temps<br>1 an',
+        mean_redkill_last12_month = 'Red.kill<br>1 an',
+        mean_redkill_last24_month_hipp = 'Red.kil<br>piste',
+        jour_last_course = 'Repos',
         # fav_ko_last = 'Fav<br>Dernière course',
         # outsider_last = 'Outsider<br>Dernière course',
         .fn = md) %>% 
       # gt_color_rows(.pred_win, palette = "ggsci::blue_material", domain = c(0,1)) %>% 
-      gt_color_rows(mean_ratio_temps_last24_month_hipp, palette = "ggsci::green_material", direction = -1) %>% 
-      gt_color_rows(mean_ratio_temps_last12_month, palette = "ggsci::teal_material", direction = -1) %>% 
+      gt_color_rows(mean_redkill_last12_month, palette = "ggsci::green_material", direction = -1) %>% 
+      gt_color_rows(mean_redkill_last24_month_hipp, palette = "ggsci::teal_material", direction = -1) %>% 
       gt_plt_bar_pct(
         column = driver_ratio_topp,
         scaled = TRUE,
@@ -385,16 +373,21 @@ server <- function(input, output, session) {
         column = .pred_win,
         scaled = TRUE,
         labels = TRUE,
-        decimals = 3,
+        # decimals = 3,
         label_cutoff = 0.1,
         fill = "#2CA25F", background = "lightblue",
         font_size = '13px'
         # height = '17px'
       ) %>% 
       tab_footnote(
-        footnote = "% d'arrivées placées lors des 12 derniers mois",
+        footnote = "% d'arrivées placées lors des 12 derniers mois, et indicateur de ratio des 2 denriers mois",
         locations = cells_column_labels(
           columns = c(driver_ratio_topp, trainer_ratio_topp, horse_ratio_topp))
+      ) %>% 
+      tab_footnote(
+        footnote = "Nombre de jours depuis la dernière course",
+        locations = cells_column_labels(
+          columns = c(jour_last_course))
       ) %>% 
       tab_style(
         style = list(
@@ -414,12 +407,27 @@ server <- function(input, output, session) {
           columns = c(trainerName, jockeyName)
         )
       ) %>% 
+      text_transform(
+        locations = cells_body(
+          columns = driver_ratio_topp,
+          rows = driver_ratio_topp_evol >= 0
+        ),
+        fn = function(x) paste(x, up_arrow)
+      ) %>%
+      text_transform(
+        locations = cells_body(
+          columns = driver_ratio_topp,
+          rows = driver_ratio_topp_evol < 0
+        ),
+        fn = function(x) paste(x, down_arrow)
+      ) %>% 
       cols_width(
         saddle ~ px(60),
         .pred_win ~ px(120),
         trainerName ~ px(80),
         jockeyName ~ px(80),
-        everything() ~ px(100))
+        everything() ~ px(100)) %>% 
+      cols_hide(driver_ratio_topp_evol) 
     
     
     #   datatable(

@@ -10,6 +10,7 @@ library(gtExtras)
 library(formattable)
 library(RColorBrewer)
 library(shinythemes)
+library(shinyjs)
 # webr::install('plotly')
 
 # library(shinymanager)
@@ -27,105 +28,62 @@ data <- mutate(data, course_label = paste0(C_number, ' - ', C_name))
 
 up_arrow <- "<span style=\"color:green\">&#9650;</span>"
 down_arrow <- "<span style=\"color:red\">&#9660;</span>"
-
-# data.frame with credentials info
-# credentials <- data.frame(
-#   user = c("test", "fanny", "victor", "benoit"),
-#   password = c("1234", "azerty", "12345", "azerty"),
-#   # comment = c("alsace", "auvergne", "bretagne"), %>% 
-#   stringsAsFactors = FALSE
-# )
+Logged = FALSE
+my_password <- "ludo"
 
 ui <- fluidPage(
-  
+  useShinyjs(),
   navbarPage(
     theme = shinytheme('cerulean'),
     
+    
+    
     "PMU",
-    tabPanel("Connexion",
-             
-             sidebarPanel(width = 3,
-                          passwordInput("password", "Mot de passe svp"),
-                          #       # Bouton pour soumettre le mot de passe
-                          actionButton("submit", "Soumettre mot de passe"),
-                          br(),
-                          
-                          uiOutput('hipp_id_graph'),
-                          uiOutput('course_filter_ui_graph'),
-                          # 
-                          # uiOutput('hipp_id'),
-                          # uiOutput('course_filter_ui'),
-                          
-                          # dateRangeInput("daterange",
-                          #                "Période : " ,
-                          #                start = today()-90,
-                          #                end   = today(),
-                          #                # min = NULL,
-                          #                # max = NULL,
-                          #                format = "yyyy-mm-dd",
-                          #                # startview = "month",
-                          #                # weekstart = 0,
-                          #                language = "fr",
-                          #                separator = " à "),
-                          br()
-             ),
-             
-             
-             mainPanel(width = 9
-             )),
     
     tabPanel("Graphiques",
              
-             sidebarPanel(width = 3,
-                          
-                          # uiOutput('hipp_id_graph'),
-                          # uiOutput('course_filter_ui_graph'),
-                          
-                          # dateRangeInput("daterange",
-                          #                "Période : " ,
-                          #                start = today()-90,
-                          #                end   = today(),
-                          #                # min = NULL,
-                          #                # max = NULL,
-                          #                format = "yyyy-mm-dd",
-                          #                # startview = "month",
-                          #                # weekstart = 0,
-                          #                language = "fr",
-                          #                separator = " à "),
-                          br()
-             ),
-             
-             
-             mainPanel(width = '100%',
-                       
-                       fluidRow(plotOutput("mychart"))
+             div( id ="Sidebar",sidebarPanel(width = 3,
+                                             
+                                             uiOutput('hipp_id_graph'),
+                                             uiOutput('course_filter_ui_graph')
              )),
-    tabPanel("Tableau",
-             
-             sidebarPanel(width = 3,
-                          
-                          # uiOutput('hipp_id_tab'),
-                          # uiOutput('course_filter_tab'),
-                          
-                          # dateRangeInput("daterange",
-                          #                "Période : " ,
-                          #                start = today()-90,
-                          #                end   = today(),
-                          #                # min = NULL,
-                          #                # max = NULL,
-                          #                format = "yyyy-mm-dd",
-                          #                # startview = "month",
-                          #                # weekstart = 0,
-                          #                language = "fr",
-                          #                separator = " à "),
-                          br()
-             ),
              
              
-             mainPanel(width = '100%',
+             mainPanel(width = "100%",
                        
+                       fluidRow(  actionButton("hideSidebar", "Cacher les filtres"),
+                                  actionButton("showSidebar", "Afficher les filtres"),),
+                       
+                       fluidRow(plotOutput("mychart")),
+                       hr(),
                        fluidRow(gt_output("mytable"))
-             ))
+             )),
+    # tabPanel("Tableau",
+    #          
+    #          sidebarPanel(width = 3,
+    #                       
+    #                       uiOutput('hipp_id_tab'),
+    #                       uiOutput('course_filter_tab'),
+    #                       
+    #                       # dateRangeInput("daterange",
+    #                       #                "Période : " ,
+    #                       #                start = today()-90,
+    #                       #                end   = today(),
+    #                       #                # min = NULL,
+    #                       #                # max = NULL,
+    #                       #                format = "yyyy-mm-dd",
+    #                       #                # startview = "month",
+    #                       #                # weekstart = 0,
+    #                       #                language = "fr",
+    #                       #                separator = " à "),
+    #                       br()
+    #          ),
+    #          
+    #          
+    #          mainPanel(width = '100%',
+    #                    
+    #                    
+    #          ))
     
     
   )
@@ -169,40 +127,51 @@ ui <- fluidPage(
 # Définir le serveur Shiny
 server <- function(input, output, session) {
   
-  # result_auth <- secure_server(check_credentials = check_credentials(credentials))
-  # 
-  # output$auth_output <- renderPrint({
-  #   reactiveValuesToList(result_auth)
-  # })
-  
-  password_correct <- reactiveVal(FALSE)
-  observeEvent(input$submit, {
-    # Vérifier le mot de passe
-    password_correct(input$password == "forbach")
+  observeEvent(input$showSidebar, {
+    shinyjs::show(id = "Sidebar")
+  })
+  observeEvent(input$hideSidebar, {
+    shinyjs::hide(id = "Sidebar")
   })
   
-  # output$hipp_id <- renderUI({
-  #   hipp = unique(data$reunion_label)
-  #   selectInput('hipp_filter_id', 'Réunion', hipp)
-  # })
+  values <- reactiveValues(authenticated = FALSE)
+  
+  dataModal <- function(failed = FALSE) {
+    modalDialog(
+      title = "Bienvenue sur l'algo PMU",
+      easyClose = F,
+      passwordInput("password", "Mot de passe :"),
+      footer = tagList(
+        # modalButton("Cancel"),
+        actionButton("ok", "OK")
+      )
+    )
+  }
+  
+  obs1 <- observe({
+    showModal(dataModal())
+  })
+
+  obs2 <- observe({
+    req(input$ok)
+    isolate({
+      Password <- input$password
+    })
+    Id.password <- which(my_password == Password)
+    if (length(Id.password) > 0) {
+        Logged <<- TRUE
+        values$authenticated <- TRUE
+        obs1$suspend()
+        removeModal()
+        }else {
+        values$authenticated <- FALSE
+    }
+  })
   
   output$hipp_id_graph <- renderUI({
     hipp = unique(data$reunion_label)
     selectInput('hipp_filter_id_graph', 'Réunion', hipp)
   })
-  
-  # output$hipp_id_tab <- renderUI({
-  #   hipp = unique(data$reunion_label)
-  #   selectInput('hipp_filter_id_tab', 'Réunion', hipp)
-  # })
-  
-  
-  # Mettre à jour les options du filtre de course en fonction de l'hippodrome sélectionné
-  # output$course_filter_ui  <- renderUI({
-  #   selected_hippodrome <- input$hipp_filter_id
-  #   courses <- unique(filter(data, reunion_label == selected_hippodrome)$course_label)
-  #   selectInput("course_filter", "Choisissez une course", choices = courses)
-  # })
   
   output$course_filter_ui_graph <- renderUI({
     selected_hippodrome <- input$hipp_filter_id_graph
@@ -210,36 +179,11 @@ server <- function(input, output, session) {
     selectInput("course_filter_graph", "Choisissez une course", choices = courses)
   })
   
-  # output$course_filter_tab  <- renderUI({
-  #   selected_hippodrome <- input$hipp_filter_id_graph
-  #   courses <- unique(filter(data, reunion_label == selected_hippodrome)$course_label)
-  #   selectInput("course_filter_tab", "Choisissez une course", choices = courses)
-  # })
-  
-  # observe({
-  #   updateSelectInput(session, "hipp_filter_id_tab", selected = input$hipp_filter_id_graph)
-  # })
-  # observe({
-  #   updateSelectInput(session, "hipp_filter_id_graph", selected = input$hipp_filter_id_tab)
-  # })
   # 
   # observe({
-  #   updateSelectInput(session, "course_filter_graph", selected = input$course_filter_tab)
+  #   y <- input$course_filter_tab
+  #   output$course_filter_graph <- y
   # })
-  # observe({
-  #   updateSelectInput(session, "course_filter_tab", selected = input$course_filter_graph)
-  # })
-  
-  # observe({
-  #   cur_val <- output$hipp_id
-  #   # This observer depends on text2 and updates text1 with any changes
-  #   if (cur_val != input$text2){
-  #     # Then we assume text2 hasn't yet been updated
-  #     updateTextInput(session, "text1", NULL, input$text2)
-  #     cur_val <<- input$text2
-  #   }
-  # })
-  
   
   # Fonction de filtrage des données
   filtered_data <- reactive({
@@ -258,7 +202,7 @@ server <- function(input, output, session) {
   output$mychart <- renderPlot({
     filtered <- filtered_data()
     
-    if (nrow(filtered) == 0 | !password_correct()) {
+    if (nrow(filtered) == 0 | !values$authenticated) {
       return(NULL)
     }
     
@@ -307,7 +251,7 @@ server <- function(input, output, session) {
   output$mytable <- render_gt({
     
     filtered <- filtered_data()
-    if (nrow(filtered) == 0 | !password_correct()) {
+    if (nrow(filtered) == 0 | !values$authenticated) {
       return(NULL)
     }
     
@@ -404,7 +348,16 @@ server <- function(input, output, session) {
           cell_text(style = "oblique", size = px(12))
         ),
         locations = cells_body(
-          columns = c(trainerName, jockeyName)
+          columns = c(trainerName, jockeyName, jour_last_course)
+        )
+      ) %>% 
+      tab_style(
+        style = list(
+          # cell_fill(color = "#F9E3D6"),
+          cell_text(size = px(12))
+        ),
+        locations = cells_body(
+          columns = c(mean_redkill_last12_month, mean_redkill_last24_month_hipp)
         )
       ) %>% 
       text_transform(
@@ -424,10 +377,18 @@ server <- function(input, output, session) {
       cols_width(
         saddle ~ px(60),
         .pred_win ~ px(120),
-        trainerName ~ px(80),
-        jockeyName ~ px(80),
-        everything() ~ px(100)) %>% 
-      cols_hide(driver_ratio_topp_evol) 
+        trainerName ~ px(60),
+        jockeyName ~ px(60),
+        driver_ratio_topp ~ px(80),
+        trainer_ratio_topp ~ px(80),
+        horse_ratio_topp ~ px(80),
+        mean_redkill_last12_month ~ px(60),
+        mean_redkill_last24_month_hipp~ px(60),
+        jour_last_course~ px(50),
+        everything() ~ px(90)) %>% 
+      cols_hide(driver_ratio_topp_evol)
+    
+
     
     
     #   datatable(

@@ -25,70 +25,54 @@ data = data %>%
 data <- mutate(data, horse_label = paste0(saddle, '-', horseName))
 data <- mutate(data, reunion_label = paste0(R_pmuNumber, ' - ', R_name))
 data <- mutate(data, course_label = paste0(C_number, ' - ', C_name))
+data$C_time <- sub("^(\\d{2}:\\d{2}).*$", "\\1", data$C_time )
 
 up_arrow <- "<span style=\"color:green\">&#9650;</span>"
 down_arrow <- "<span style=\"color:red\">&#9660;</span>"
 Logged = FALSE
-my_password <- "ludo"
+my_password <- "jmb"
 
 ui <- fluidPage(
   useShinyjs(),
   navbarPage(
     theme = shinytheme('cerulean'),
     
-    
-    
     "PMU",
     
     tabPanel("Graphiques",
+             fluidRow(
+               div(id = "Sidebar", sidebarPanel(width = 12,
+                                                fluidRow(
+                                                  column(4, uiOutput('hipp_id_graph')),
+                                                  column(6, uiOutput('course_filter_ui_graph'))),
+                                                fluidRow(textOutput("heure")))
+               ),
+               mainPanel(width = "100%",
+                         fluidRow(
+                           column(4, actionButton("hideSidebar", "Cacher/afficher les filtres", class = "btn btn-sm")),
+                           # column(3, actionButton("showSidebar", "Afficher les filtres", class = "btn btn-sm"))
+                         ),
+                         fluidRow(plotOutput("mychart")),
+                         hr(),
+                         fluidRow(gt_output("mytable"))))),
+    tabPanel("Chevaux à jouer",
              
-             div( id ="Sidebar",sidebarPanel(width = 3,
-                                             
-                                             uiOutput('hipp_id_graph'),
-                                             uiOutput('course_filter_ui_graph')
-             )),
-             
-             
-             mainPanel(width = "100%",
-                       
-                       fluidRow(  actionButton("hideSidebar", "Cacher les filtres"),
-                                  actionButton("showSidebar", "Afficher les filtres"),),
-                       
-                       fluidRow(plotOutput("mychart")),
-                       hr(),
-                       fluidRow(gt_output("mytable"))
-             )),
-    # tabPanel("Tableau",
-    #          
-    #          sidebarPanel(width = 3,
-    #                       
-    #                       uiOutput('hipp_id_tab'),
-    #                       uiOutput('course_filter_tab'),
-    #                       
-    #                       # dateRangeInput("daterange",
-    #                       #                "Période : " ,
-    #                       #                start = today()-90,
-    #                       #                end   = today(),
-    #                       #                # min = NULL,
-    #                       #                # max = NULL,
-    #                       #                format = "yyyy-mm-dd",
-    #                       #                # startview = "month",
-    #                       #                # weekstart = 0,
-    #                       #                language = "fr",
-    #                       #                separator = " à "),
-    #                       br()
-    #          ),
-    #          
-    #          
-    #          mainPanel(width = '100%',
-    #                    
-    #                    
-    #          ))
+             fluidRow(
+               div(id = "Sidebar", sidebarPanel(width = 12,
+                                                fluidRow( sliderInput("tresh",
+                                                                      label="Proba mini.",
+                                                                      min = 0, max = 100, post  = " %",
+                                                                      value = 50))))),
+
+             mainPanel(width = '100%',
+                       fluidRow(gt_output("mytable_today"))
+
+))
     
     
   )
-  
 )
+  
 
 
 # Définir l'interface utilisateur Shiny
@@ -127,13 +111,14 @@ ui <- fluidPage(
 # Définir le serveur Shiny
 server <- function(input, output, session) {
   
-  observeEvent(input$showSidebar, {
-    shinyjs::show(id = "Sidebar")
-  })
   observeEvent(input$hideSidebar, {
-    shinyjs::hide(id = "Sidebar")
+    if (input$hideSidebar %% 2 == 1) {
+      shinyjs::hide(id = "Sidebar")
+    } else {
+      shinyjs::show(id = "Sidebar")
+    }
   })
-  
+
   values <- reactiveValues(authenticated = FALSE)
   
   dataModal <- function(failed = FALSE) {
@@ -193,6 +178,12 @@ server <- function(input, output, session) {
   # Réaction pour mettre à jour les données filtrées
   observeEvent(input$update, {
     filtered_data()
+  })
+  
+  output$heure <- renderText({
+    
+    filtered <- filtered_data()
+    paste0('Heure de la course : ', unique(filtered$C_time))
   })
   
   # Créer le graphique Highcharter
@@ -414,6 +405,85 @@ server <- function(input, output, session) {
     #   formatPercentage(columns = c("Ratio Driver", "Ratio Entr.", 'Ratio Cheval', '.pred_win'), digits = 2) %>% 
     #     # Remplacez "col1", "col2", ... par les noms des colonnes à formater en pourcentage
     #   formatRound(columns = c("Temps hipp", "Temps 365"), digits = 2) 
+    
+  })
+  
+  
+  output$mytable_today <- render_gt({
+    
+    filtered <- filter(data, .pred_win >= input$tresh/100)
+    
+    if (nrow(filtered) == 0 | !values$authenticated) {
+      return(NULL)
+    }
+    
+    filtered %>% 
+      mutate(id = paste0('R',R_pmuNumber, 'C', C_number)) %>% 
+      select(id, C_time, R_name, C_name,
+             saddle, horseName, trainerName, jockeyName, 
+             jour_last_course,
+             # fav_ko_last, outsider_last,
+             .pred_win) %>%
+      arrange(desc(.pred_win)) %>%  
+      mutate(#.pred_win = formattable::percent(.pred_win),
+        .pred_win = .pred_win*100) %>% 
+      gt() %>%
+      gt_theme_espn() %>% 
+      cols_label(
+        saddle = "Numéros",
+        C_time = 'Heure',
+        .pred_win = 'Proba',
+        horseName = 'Cheval',
+        trainerName = 'Entr.',
+        jockeyName = 'Jockey', 
+        jour_last_course = 'Repos',
+        R_name = 'Réunion',
+        C_name = 'Course',
+        id = 'R-C',
+        # fav_ko_last = 'Fav<br>Dernière course',
+        # outsider_last = 'Outsider<br>Dernière course',
+        .fn = md) %>% 
+      # gt_color_rows(.pred_win, palette = "ggsci::blue_material", domain = c(0,1)) %>% 
+      gt_plt_bar_pct(
+        column = .pred_win,
+        scaled = TRUE,
+        labels = TRUE,
+        # decimals = 3,
+        label_cutoff = 0.1,
+        fill = "#2CA25F", background = "lightblue",
+        font_size = '13px'
+        # height = '17px'
+      ) %>% 
+      tab_style(
+        style = list(
+          # cell_fill(color = "#F9E3D6"),
+          cell_text(style = "oblique")
+        ),
+        locations = cells_body(
+          columns = horseName,
+        )
+      ) %>% 
+      tab_style(
+        style = list(
+          # cell_fill(color = "#F9E3D6"),
+          cell_text(style = "oblique", size = px(12))
+        ),
+        locations = cells_body(
+          columns = c(trainerName, jockeyName, jour_last_course)
+        )
+      ) %>% 
+      cols_width(
+        saddle ~ px(60),
+        id ~ px(50),
+        C_time~ px(50),
+        .pred_win ~ px(120),
+        trainerName ~ px(60),
+        jockeyName ~ px(60),
+        jour_last_course~ px(50),
+        everything() ~ px(90)) 
+    
+    
+    
     
   })
   

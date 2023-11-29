@@ -11,6 +11,8 @@ library(formattable)
 library(RColorBrewer)
 library(shinythemes)
 library(shinyjs)
+library(scales)
+library(shinydashboard)
 # webr::install('plotly')
 
 # library(shinymanager)
@@ -18,6 +20,19 @@ library(shinyjs)
 
 # Charger les données
 data <- read.csv2('preds.csv', stringsAsFactors = FALSE)
+result <- read.csv2('result.csv', stringsAsFactors = FALSE)
+result <- result %>% 
+  group_by(C_uuid) %>%
+  arrange(-Proba, .by_group = T) %>%
+  mutate(rank_P1 = row_number()) %>%
+  ungroup() %>% 
+  mutate(flag = ifelse(PP == 1 & P == 0,
+                       1,
+                       0)) %>%
+  filter(flag == 0) 
+
+result$raceDate <- as.Date(result$raceDate)
+
 data = data %>% 
   arrange(R_pmuNumber, C_number) %>% 
   distinct(horseName, saddle, C_uuid, .keep_all = TRUE)
@@ -30,7 +45,7 @@ data$C_time <- sub("^(\\d{2}:\\d{2}).*$", "\\1", data$C_time )
 up_arrow <- "<span style=\"color:green\">&#9650;</span>"
 down_arrow <- "<span style=\"color:red\">&#9660;</span>"
 Logged = FALSE
-my_password <- "jmb"
+my_password <- "kromzer"
 
 ui <- fluidPage(
   useShinyjs(),
@@ -67,7 +82,39 @@ ui <- fluidPage(
              mainPanel(width = '100%',
                        fluidRow(gt_output("mytable_today"))
 
-))
+)),
+tabPanel("Backtest",
+         
+         fluidRow(
+           div(id = "Sidebar_back", sidebarPanel(width = 12,
+                                            fluidRow( sliderInput("tresh2",
+                                                                  label="Proba mini.",
+                                                                  min = 0, max = 100, post  = " %",
+                                                                  value = 50)),
+                                            fluidRow(
+                                              column(2, numericInput("SG", "Mise G:", 2, min = 1, max = 1000)),
+                                              column(2, numericInput("SP", "Mise P:", 8, min = 1, max = 1000)),
+                                              column(2, numericInput("rank_tresh", "Rank de proba mini", 1, min = 1, max = 6)),)))),
+         
+         mainPanel(width = '100%',
+                   dashboardBody(fluidRow(
+                     infoBoxOutput('sp_stat'),
+                     infoBoxOutput('sg_stat'))),
+                     # summaryBox2("% Pred. SP",
+                     #             textOutput('sp_stat'),
+                     #             width = 3,
+                     #             icon = "fas fa-clipboard-list",
+                     #             style = "info"),
+                     # summaryBox2("% Pred. SG",
+                     #             textOutput('sg_stat'),
+                     #             width = 3,
+                     #             icon = "fas fa-clipboard-list",
+                     #             style = "info"),)
+                   fluidRow(plotOutput("plot_backtest"))
+                   
+         )),
+
+
     
     
   )
@@ -483,6 +530,106 @@ server <- function(input, output, session) {
         everything() ~ px(90)) 
     
     
+    
+    
+  })
+  
+  output$sp_stat <- renderInfoBox({
+    
+    filtered <- result %>% 
+      filter(Proba >= input$tresh2/100,
+             rank_P1 <= input$rank_tresh)
+    
+    text = filtered %>%
+      group_by(PP) %>%
+      tally() %>%
+      mutate(perc = n/sum(n)) %>% 
+      filter(PP == 1)
+    
+    infoBox(
+      "% Pred. SP", paste0(round(text$perc, 2)*100,"%"), icon = icon("list"),
+      color = "purple"
+    )
+  })
+    
+    
+  output$sg_stat <- renderInfoBox({
+    
+    filtered <- result %>% 
+      filter(Proba >= input$tresh2/100,
+             rank_P1 <= input$rank_tresh)
+    
+    text = filtered %>%
+      group_by(P1) %>%
+      tally() %>%
+      mutate(perc = n/sum(n)) %>% 
+      filter(P1 == 1)
+    
+    infoBox(
+      "% Pred. SG", paste0(round(text$perc, 2)*100,"%"), icon = icon("thumbs-up", lib = "glyphicon"),
+      color = "yellow"
+    )
+    
+    
+  })
+  
+  
+  filtered_backtest <- reactive({
+    filtered <- result %>% 
+      filter(Proba >= input$tresh2/100,
+             rank_P1 <= input$rank_tresh)
+    
+    mise_p = input$SP
+    mise_g = input$SG
+    
+    stat = filtered %>%
+      mutate(
+        gain_place = ifelse(P > 0,
+                            (P*mise_p)-mise_p,
+                            -mise_p),
+        gain_gagnant = ifelse(G > 0,
+                              (G*mise_g)-mise_g,
+                              -mise_g),
+      )
+    
+    stat %>% 
+      group_by(raceDate) %>%
+      summarise(gain_place = sum(gain_place),
+                gain_gagnant = sum(gain_gagnant),
+                dep = n()*(mise_p+mise_g)) %>%
+      ungroup() %>%
+      mutate(cum_place = cumsum(gain_place),
+             cum_gagnant = cumsum(gain_gagnant),
+             total = cumsum(gain_place + gain_gagnant))
+    
+  })
+  
+  
+  output$plot_backtest <- renderPlot({
+    
+    filtered <- filtered_backtest()
+    
+    if (nrow(filtered) == 0 | !values$authenticated) {
+      return(NULL)
+    }
+    
+    ggplot(filtered, aes(x = raceDate, y = total))+ 
+      geom_line(aes(color='Total')) +
+      geom_point(size = 0.5)+
+      geom_line( aes(x = raceDate, y = cum_gagnant, color='SG')) +
+      geom_line( aes(x = raceDate, y = cum_place, color='SP')) +
+      scale_x_date(date_labels = '%d-%m-%y', date_breaks = '1 day') +
+      scale_y_continuous(labels = dollar_format(suffix = "€", prefix = "")) +
+      geom_hline(yintercept=0, linetype="dashed", color = "red")+
+      theme(
+        axis.text.x = element_text(
+          angle = 40,
+          hjust = 1,
+          size = 8)) +
+      ylab("Portefeuille") + xlab("Date") +
+      scale_color_manual(name='',
+                         breaks=c('Total', 'SG', 'SP'),
+                         values=c('Total'='black', 'SG'='blue', 'SP'='orange'))
     
     
   })

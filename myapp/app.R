@@ -77,7 +77,7 @@ ui <- fluidPage(
                                                 fluidRow( sliderInput("tresh",
                                                                       label="Proba mini.",
                                                                       min = 0, max = 100, post  = " %",
-                                                                      value = 50))))),
+                                                                      value = 80))))),
 
              mainPanel(width = '100%',
                        fluidRow(gt_output("mytable_today"))
@@ -90,7 +90,7 @@ tabPanel("Backtest",
                                             fluidRow( sliderInput("tresh2",
                                                                   label="Proba mini.",
                                                                   min = 0, max = 100, post  = " %",
-                                                                  value = 50)),
+                                                                  value = 80)),
                                             fluidRow(
                                               column(2, numericInput("SG", "Mise G:", 2, min = 1, max = 1000)),
                                               column(2, numericInput("SP", "Mise P:", 8, min = 1, max = 1000)),
@@ -362,7 +362,7 @@ server <- function(input, output, session) {
         # height = '17px'
       ) %>% 
       tab_footnote(
-        footnote = "% d'arrivées placées lors des 12 derniers mois, et indicateur de ratio des 2 denriers mois",
+        footnote = "% d'arrivées placées lors des 12 derniers mois, et indicateur de ratio des 2 derniers mois",
         locations = cells_column_labels(
           columns = c(driver_ratio_topp, trainer_ratio_topp, horse_ratio_topp))
       ) %>% 

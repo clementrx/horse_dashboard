@@ -45,7 +45,7 @@ data$C_time <- sub("^(\\d{2}:\\d{2}).*$", "\\1", data$C_time )
 up_arrow <- "<span style=\"color:green\">&#9650;</span>"
 down_arrow <- "<span style=\"color:red\">&#9660;</span>"
 Logged = FALSE
-my_password <- "kromzer"
+my_password <- "sundodo"
 
 ui <- fluidPage(
   useShinyjs(),

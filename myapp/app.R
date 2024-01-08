@@ -45,7 +45,7 @@ data$C_time <- sub("^(\\d{2}:\\d{2}).*$", "\\1", data$C_time )
 up_arrow <- "<span style=\"color:green\">&#9650;</span>"
 down_arrow <- "<span style=\"color:red\">&#9660;</span>"
 Logged = FALSE
-my_password <- "sundodo"
+my_password <- "quinte"
 
 ui <- fluidPage(
   useShinyjs(),
@@ -90,7 +90,7 @@ tabPanel("Backtest",
                                             fluidRow( sliderInput("tresh2",
                                                                   label="Proba mini.",
                                                                   min = 0, max = 100, post  = " %",
-                                                                  value = 80)),
+                                                                  value = 85)),
                                             fluidRow(
                                               column(2, numericInput("SG", "Mise G:", 2, min = 1, max = 1000)),
                                               column(2, numericInput("SP", "Mise P:", 8, min = 1, max = 1000)),

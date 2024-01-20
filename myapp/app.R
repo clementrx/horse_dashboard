@@ -13,25 +13,40 @@ library(shinythemes)
 library(shinyjs)
 library(scales)
 library(shinydashboard)
+library(data.table)
+library(stringr)
 # webr::install('plotly')
 
 # library(shinymanager)
 # library(highcharter)
 
 # Charger les données
-data <- read.csv2('preds.csv', stringsAsFactors = FALSE)
+data <- read.csv2('pred.csv', stringsAsFactors = FALSE)
 result <- read.csv2('result.csv', stringsAsFactors = FALSE)
-result <- result %>% 
-  group_by(C_uuid) %>%
-  arrange(-Proba, .by_group = T) %>%
-  mutate(rank_P1 = row_number()) %>%
-  ungroup() %>% 
-  mutate(flag = ifelse(PP == 1 & P == 0,
-                       1,
-                       0)) %>%
-  filter(flag == 0) 
 
-result$raceDate <- as.Date(result$raceDate)
+setDT(result)
+result[,PMU_fr_liveOdd:= as.numeric(PMU_fr_liveOdd)]
+result[,PMU_liveOdd:= as.numeric(PMU_liveOdd)]
+result[,GENYBET_liveOdd:= as.numeric(GENYBET_liveOdd)]
+result[,SOREC_liveOdd:= as.numeric(SOREC_liveOdd)]
+result[,BETCLIC_liveOdd:= as.numeric(BETCLIC_liveOdd)]
+result[,ZETURF_liveOdd:= as.numeric(ZETURF_liveOdd)]
+
+
+result[, cote := ifelse(!is.na(PMU_fr_liveOdd), PMU_fr_liveOdd,
+                        ifelse(!is.na(PMU_liveOdd), PMU_liveOdd,
+                               ifelse(!is.na(ZETURF_liveOdd), ZETURF_liveOdd,
+                                      ifelse(!is.na(GENYBET_liveOdd), GENYBET_liveOdd,
+                                             ifelse(!is.na(SOREC_liveOdd), SOREC_liveOdd, BETCLIC_liveOdd)))))]
+
+result = result %>%
+  group_by(raceDate, C_uuid) %>%
+  arrange(-PP, .by_group = T) %>%
+  mutate(rank_PP = row_number()) %>%
+  arrange(-P1, .by_group = T) %>%
+  mutate(rank_P1 = row_number()) %>%
+  ungroup()
+
 
 data = data %>% 
   arrange(R_pmuNumber, C_number) %>% 
@@ -46,6 +61,19 @@ up_arrow <- "<span style=\"color:green\">&#9650;</span>"
 down_arrow <- "<span style=\"color:red\">&#9660;</span>"
 Logged = FALSE
 my_password <- "quinte"
+
+rating_stars <- function(i) {
+  
+  stars <-  ifelse(i  == 1,
+                   fontawesome::fa("star", fill= "orange"),
+                   fontawesome::fa("star", fill= "grey"))
+  
+  label <- sprintf("Préparé pour cette course")
+  div_out <- div(title = label, "aria-label" = label, role = "img", stars)
+  
+  glue::glue(as.character(div_out) %>% 
+               gt::html())
+}
 
 ui <- fluidPage(
   useShinyjs(),
@@ -70,56 +98,79 @@ ui <- fluidPage(
                          fluidRow(plotOutput("mychart")),
                          hr(),
                          fluidRow(gt_output("mytable"))))),
-    tabPanel("Chevaux à jouer",
+    # tabPanel("Chevaux à jouer",
+    #          
+    #          fluidRow(
+    #            div(id = "Sidebar", sidebarPanel(width = 12,
+    #                                             fluidRow( sliderInput("tresh",
+    #                                                                   label="Proba mini.",
+    #                                                                   min = 0, max = 100, post  = " %",
+    #                                                                   value = 80))))),
+    #          
+    #          mainPanel(width = '100%',
+    #                    fluidRow(gt_output("mytable_today"))
+    #                    
+    #          )),
+    tabPanel("Backtest",
              
              fluidRow(
-               div(id = "Sidebar", sidebarPanel(width = 12,
-                                                fluidRow( sliderInput("tresh",
-                                                                      label="Proba mini.",
-                                                                      min = 0, max = 100, post  = " %",
-                                                                      value = 80))))),
-
+               div(id = "Sidebar_back", sidebarPanel(width = 12,
+                                                     fluidRow( column(2,sliderInput("tresh2",
+                                                                                    label="Proba mini. P1",
+                                                                                    min = 0, max = 100, post  = " %",
+                                                                                    value = 10)),
+                                                               column(2,sliderInput("treshPP",
+                                                                                    label="Proba mini. PP",
+                                                                                    min = 0, max = 100, post  = " %",
+                                                                                    value = 50)),
+                                                               column(2,sliderInput("cote_max",
+                                                                                    label="Cote max",
+                                                                                    min = 1.1, max = 100, post  = " Є",
+                                                                                    value = 20))
+                                                     ),
+                                                     fluidRow(
+                                                       column(2, numericInput("SG", "Mise G:", 2, min = 0, max = 1000)),
+                                                       column(2, numericInput("SP", "Mise P:", 8, min = 0, max = 1000)),
+                                                       column(2, numericInput("rank_tresh", "Rank de proba mini P1", 20, min = 1, max = 20)),
+                                                       column(2, numericInput("rank_treshPP", "Rank de proba mini PP", 1, min = 1, max = 20)))))),
+             
              mainPanel(width = '100%',
-                       fluidRow(gt_output("mytable_today"))
-
-)),
-tabPanel("Backtest",
-         
-         fluidRow(
-           div(id = "Sidebar_back", sidebarPanel(width = 12,
-                                            fluidRow( sliderInput("tresh2",
-                                                                  label="Proba mini.",
-                                                                  min = 0, max = 100, post  = " %",
-                                                                  value = 85)),
-                                            fluidRow(
-                                              column(2, numericInput("SG", "Mise G:", 2, min = 1, max = 1000)),
-                                              column(2, numericInput("SP", "Mise P:", 8, min = 1, max = 1000)),
-                                              column(2, numericInput("rank_tresh", "Rank de proba mini", 1, min = 1, max = 6)),)))),
-         
-         mainPanel(width = '100%',
-                   dashboardBody(fluidRow(
-                     infoBoxOutput('sp_stat'),
-                     infoBoxOutput('sg_stat'))),
-                     # summaryBox2("% Pred. SP",
-                     #             textOutput('sp_stat'),
-                     #             width = 3,
-                     #             icon = "fas fa-clipboard-list",
-                     #             style = "info"),
-                     # summaryBox2("% Pred. SG",
-                     #             textOutput('sg_stat'),
-                     #             width = 3,
-                     #             icon = "fas fa-clipboard-list",
-                     #             style = "info"),)
-                   fluidRow(plotOutput("plot_backtest"))
-                   
-         )),
-
-
+                       dashboardBody(
+                         fluidRow(
+                           infoBoxOutput('sg_stat'),
+                           infoBoxOutput('total_paris'),
+                           infoBoxOutput('roi_G')
+                         ),
+                         fluidRow(
+                           infoBoxOutput('sp_stat'),
+                           infoBoxOutput('total_dep'),
+                           infoBoxOutput('roi_P')
+                         ),
+                         fluidRow(
+                           infoBoxOutput('roi'),
+                           infoBoxOutput('gain_tot'),
+                           infoBoxOutput('roi_moyen'),
+                         )),
+                       # summaryBox2("% Pred. SP",
+                       #             textOutput('sp_stat'),
+                       #             width = 3,
+                       #             icon = "fas fa-clipboard-list",
+                       #             style = "info"),
+                       # summaryBox2("% Pred. SG",
+                       #             textOutput('sg_stat'),
+                       #             width = 3,
+                       #             icon = "fas fa-clipboard-list",
+                       #             style = "info"),)
+                       fluidRow(plotOutput("plot_backtest"))
+                       
+             )),
+    
+    
     
     
   )
 )
-  
+
 
 
 # Définir l'interface utilisateur Shiny
@@ -165,7 +216,7 @@ server <- function(input, output, session) {
       shinyjs::show(id = "Sidebar")
     }
   })
-
+  
   values <- reactiveValues(authenticated = FALSE)
   
   dataModal <- function(failed = FALSE) {
@@ -183,7 +234,7 @@ server <- function(input, output, session) {
   obs1 <- observe({
     showModal(dataModal())
   })
-
+  
   obs2 <- observe({
     req(input$ok)
     isolate({
@@ -191,12 +242,12 @@ server <- function(input, output, session) {
     })
     Id.password <- which(my_password == Password)
     if (length(Id.password) > 0) {
-        Logged <<- TRUE
-        values$authenticated <- TRUE
-        obs1$suspend()
-        removeModal()
-        }else {
-        values$authenticated <- FALSE
+      Logged <<- TRUE
+      values$authenticated <- TRUE
+      obs1$suspend()
+      removeModal()
+    }else {
+      values$authenticated <- FALSE
     }
   })
   
@@ -263,11 +314,11 @@ server <- function(input, output, session) {
     mycolors <- colorRampPalette(c("#2CA25F", "red"))(nb.cols)
     
     filtered = cbind(filtered %>% 
-                   arrange(desc(.pred_win)),
-                 mycolors)
+                       arrange(desc(PP)),
+                     mycolors)
     
-    ggplot(filtered, aes(x = .pred_win, y = reorder(horse_label,  .pred_win), 
-                     label = paste0(round(.pred_win * 100, 2), "%"))) +
+    ggplot(filtered, aes(x = PP, y = reorder(horse_label,  PP), 
+                         label = paste0(round(PP * 100, 2), "%"))) +
       geom_bar(stat = "identity", fill = mycolors) +
       labs(x = "Probabilité de finir SP", y = "Cheval") +
       geom_text(position = position_dodge(width = .9),
@@ -275,8 +326,8 @@ server <- function(input, output, session) {
                 size = 3) +
       theme_minimal() +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-      geom_vline(xintercept = 0.8,
-                 color = "blue") +
+      # geom_vline(xintercept = 0.8,
+      #            color = "blue") +
       scale_x_continuous(labels = scales::percent_format(), limits = c(0, 1),
                          breaks = seq(0, 1, 0.1))+
       scale_fill_gradientn(colors = mycolors, limits = c(0, 1)) +
@@ -297,38 +348,67 @@ server <- function(input, output, session) {
       select(saddle, horseName, trainerName, jockeyName, 
              #totalPrize,
              driver_ratio_topp, trainer_ratio_topp, horse_ratio_topp,
-             mean_redkill_last12_month, mean_redkill_last24_month_hipp,
-             driver_ratio_topp_evol, jour_last_course,
+             cote, jour_last_course, mean_ratio_temps_last12_month,
+             mean_temps_last12_month,
+             CLASS_INF, PREP_D4, 
+             driver_ratio_topp_evol, trainer_ratio_topp_evol,
              # fav_ko_last, outsider_last,
-             .pred_win) %>%
-      arrange(desc(.pred_win)) %>%  
+             P1, PP) %>%
+      arrange(desc(PP)) %>%  
       mutate(#.pred_win = formattable::percent(.pred_win),
-        .pred_win = .pred_win*100,
-        mean_redkill_last12_month = digits(mean_redkill_last12_month, 2),
-        mean_redkill_last24_month_hipp = digits(mean_redkill_last24_month_hipp, 2),
+        P1 = P1*100,
+        PP = PP*100,
+        mean_ratio_temps_last12_month = digits(mean_ratio_temps_last12_month*100, 2),
+        # label = paste0(horseName, ";", jockeyName, ";", trainerName),
+        mean_temps_last12_month = digits(mean_temps_last12_month, 2),
         driver_ratio_topp = driver_ratio_topp*100,
         trainer_ratio_topp = trainer_ratio_topp*100,
-        horse_ratio_topp = horse_ratio_topp*100) %>% 
+        horse_ratio_topp = horse_ratio_topp*100,
+        D4 = ifelse(PREP_D4 == 1, 'star', ''),
+        INF = ifelse(CLASS_INF == 1, 'circle-down', '')) %>% 
+      # select(-c(horseName, jockeyName, trainerName)) %>% 
       gt() %>%
-      gt_theme_espn() %>% 
+      gt_fa_column(D4) %>% 
+      gt_fa_column(INF) %>% 
+      cols_merge(
+        columns = c(horseName, jockeyName, trainerName),
+        pattern = "{1};{2};{3}"
+      ) %>% 
+      text_transform(
+        locations = cells_body(
+          columns = c(horseName)
+        ),
+        fn = function(x){
+          
+          horseName <- word(x, 1, sep = ";")
+          jockeyName <- word(x, 2, sep = ";")
+          trainerName <- word(x, 3, sep = ";")
+          glue::glue(
+            "<div><span style='font-weight:bold;font-variant:small-caps;font-size:14px'>{horseName}</div>
+        <div><span style ='font-weight:bold;color:grey;font-size:12px'>{jockeyName}</span></div>
+             <div><span style ='font-weight:bold;color:grey;font-size:10px'>{trainerName}</span></div>"
+          )
+        }
+      ) %>% 
+      # gt_theme_espn() %>% 
       cols_label(
         saddle = "Numéros",
-        .pred_win = 'Proba',
+        P1 = 'Proba<br>Gagnant',
+        PP = 'Proba<br>Placé',
         horseName = 'Cheval',
-        trainerName = 'Entr.',
-        jockeyName = 'Jockey', 
         driver_ratio_topp = "Ratio<br>Jockey",
         trainer_ratio_topp = "Ratio<br>Entr.",
         horse_ratio_topp = "Ratio<br>Cheval",
-        mean_redkill_last12_month = 'Red.kill<br>1 an',
-        mean_redkill_last24_month_hipp = 'Red.kil<br>piste',
+        mean_ratio_temps_last12_month = 'Score (100)<br>1 an',
+        mean_temps_last12_month = 'Red.kil<br>1 an',
         jour_last_course = 'Repos',
         # fav_ko_last = 'Fav<br>Dernière course',
         # outsider_last = 'Outsider<br>Dernière course',
         .fn = md) %>% 
+      fmt_currency(columns = cote, decimals = 1, currency = 'EUR', placement = 'right') %>% 
       # gt_color_rows(.pred_win, palette = "ggsci::blue_material", domain = c(0,1)) %>% 
-      gt_color_rows(mean_redkill_last12_month, palette = "ggsci::green_material", direction = -1) %>% 
-      gt_color_rows(mean_redkill_last24_month_hipp, palette = "ggsci::teal_material", direction = -1) %>% 
+      gt_color_rows(mean_ratio_temps_last12_month, palette = "ggsci::green_material", direction = 1) %>% 
+      gt_color_rows(mean_temps_last12_month, palette = "ggsci::teal_material", direction = -1) %>% 
       gt_plt_bar_pct(
         column = driver_ratio_topp,
         scaled = TRUE,
@@ -352,12 +432,22 @@ server <- function(input, output, session) {
         fill = "#8B4513", background = "lightblue"
       ) %>% 
       gt_plt_bar_pct(
-        column = .pred_win,
+        column = PP,
         scaled = TRUE,
         labels = TRUE,
         # decimals = 3,
         label_cutoff = 0.1,
         fill = "#2CA25F", background = "lightblue",
+        font_size = '13px'
+        # height = '17px'
+      ) %>% 
+      gt_plt_bar_pct(
+        column = P1,
+        scaled = TRUE,
+        labels = TRUE,
+        # decimals = 3,
+        label_cutoff = 0.1,
+        fill = "#b8711a", background = "lightblue",
         font_size = '13px'
         # height = '17px'
       ) %>% 
@@ -371,6 +461,16 @@ server <- function(input, output, session) {
         locations = cells_column_labels(
           columns = c(jour_last_course))
       ) %>% 
+      tab_footnote(
+        footnote = "Ferrure les 3 dernières courses, et D4 aujourd'hui",
+        locations = cells_column_labels(
+          columns = c(D4))
+      ) %>% 
+      tab_footnote(
+        footnote = "Course de catégorie inférieure à la précédente",
+        locations = cells_column_labels(
+          columns = c(INF))
+      ) %>% 
       tab_style(
         style = list(
           # cell_fill(color = "#F9E3D6"),
@@ -383,19 +483,10 @@ server <- function(input, output, session) {
       tab_style(
         style = list(
           # cell_fill(color = "#F9E3D6"),
-          cell_text(style = "oblique", size = px(12))
-        ),
-        locations = cells_body(
-          columns = c(trainerName, jockeyName, jour_last_course)
-        )
-      ) %>% 
-      tab_style(
-        style = list(
-          # cell_fill(color = "#F9E3D6"),
           cell_text(size = px(12))
         ),
         locations = cells_body(
-          columns = c(mean_redkill_last12_month, mean_redkill_last24_month_hipp)
+          columns = c(mean_ratio_temps_last12_month, mean_ratio_temps_last12_month)
         )
       ) %>% 
       text_transform(
@@ -412,22 +503,35 @@ server <- function(input, output, session) {
         ),
         fn = function(x) paste(x, down_arrow)
       ) %>% 
+      text_transform(
+        locations = cells_body(
+          columns = trainer_ratio_topp,
+          rows = trainer_ratio_topp_evol >= 0
+        ),
+        fn = function(x) paste(x, up_arrow)
+      ) %>%
+      text_transform(
+        locations = cells_body(
+          columns = trainer_ratio_topp,
+          rows = trainer_ratio_topp_evol < 0
+        ),
+        fn = function(x) paste(x, down_arrow)
+      ) %>% 
       cols_width(
-        saddle ~ px(60),
-        .pred_win ~ px(120),
-        trainerName ~ px(60),
-        jockeyName ~ px(60),
+        saddle ~ px(80),
+        PP ~ px(80),
+        horseName ~ px(100),
         driver_ratio_topp ~ px(80),
         trainer_ratio_topp ~ px(80),
         horse_ratio_topp ~ px(80),
-        mean_redkill_last12_month ~ px(60),
-        mean_redkill_last24_month_hipp~ px(60),
-        jour_last_course~ px(50),
+        # mean_ratio_temps_last12_month, mean_ratio_temps_last12_month ~ px(60),
+        # mean_ratio_temps_last12_month, mean_ratio_temps_last12_month~ px(60),
+        jour_last_course~ px(90),
         everything() ~ px(90)) %>% 
-      cols_hide(driver_ratio_topp_evol)
-    
-
-    
+      cols_hide(c(driver_ratio_topp_evol,
+                  trainer_ratio_topp_evol,
+                  PREP_D4,
+                  CLASS_INF))
     
     #   datatable(
     #   filtered %>% 
@@ -537,33 +641,38 @@ server <- function(input, output, session) {
   output$sp_stat <- renderInfoBox({
     
     filtered <- result %>% 
-      filter(Proba >= input$tresh2/100,
-             rank_P1 <= input$rank_tresh)
+      filter(P1 >= input$tresh2/100,
+             PP >= input$treshPP/100,
+             rank_P1 <= input$rank_tresh,
+             rank_PP <= input$rank_treshPP)
     
     text = filtered %>%
-      group_by(PP) %>%
+      group_by(TOPP) %>%
       tally() %>%
       mutate(perc = n/sum(n)) %>% 
-      filter(PP == 1)
+      filter(TOPP == 1)
     
     infoBox(
       "% Pred. SP", paste0(round(text$perc, 2)*100,"%"), icon = icon("list"),
       color = "purple"
     )
   })
-    
-    
+  
+  
   output$sg_stat <- renderInfoBox({
     
     filtered <- result %>% 
-      filter(Proba >= input$tresh2/100,
-             rank_P1 <= input$rank_tresh)
+      filter(P1 >= input$tresh2/100,
+             PP >= input$treshPP/100,
+             rank_P1 <= input$rank_tresh,
+             rank_PP <= input$rank_treshPP,
+             cote <= input$cote_max)
     
     text = filtered %>%
-      group_by(P1) %>%
+      group_by(TOP1) %>%
       tally() %>%
       mutate(perc = n/sum(n)) %>% 
-      filter(P1 == 1)
+      filter(TOP1 == 1)
     
     infoBox(
       "% Pred. SG", paste0(round(text$perc, 2)*100,"%"), icon = icon("thumbs-up", lib = "glyphicon"),
@@ -573,11 +682,84 @@ server <- function(input, output, session) {
     
   })
   
+  output$total_paris <- renderInfoBox({
+    
+    filtered <- result %>% 
+      filter(P1 >= input$tresh2/100,
+             PP >= input$treshPP/100,
+             rank_P1 <= input$rank_tresh,
+             rank_PP <= input$rank_treshPP,
+             cote <= input$cote_max)
+    
+    text = nrow(filtered)
+    
+    infoBox(
+      "Nombre total de paris : ", paste0(text), icon = icon("book", lib = "glyphicon"),
+      color = "yellow"
+    )
+    
+  })
+  
+  output$total_dep <- renderInfoBox({
+    
+    filtered <- result %>% 
+      filter(P1 >= input$tresh2/100,
+             PP >= input$treshPP/100,
+             rank_P1 <= input$rank_tresh,
+             rank_PP <= input$rank_treshPP,
+             cote <= input$cote_max)
+    
+    text = (nrow(filtered)*input$SP) + (nrow(filtered)*input$SG)
+    
+    infoBox(
+      "Dépenses total : ", paste0(text, "€"), icon = icon("credit-card", lib = "glyphicon"),
+      color = "yellow"
+    )
+    
+  })
+  
+  output$gain_tot <- renderInfoBox({
+    
+    filtered <- result %>% 
+      filter(P1 >= input$tresh2/100,
+             PP >= input$treshPP/100,
+             rank_P1 <= input$rank_tresh,
+             rank_PP <= input$rank_treshPP,
+             cote <= input$cote_max)
+    
+    mise_p = input$SP
+    mise_g = input$SG
+    
+    stat = filtered %>%
+      mutate(
+        gain_place = ifelse(P > 0,
+                            (P*mise_p)-mise_p,
+                            -mise_p),
+        gain_gagnant = ifelse(G > 0,
+                              (G*mise_g)-mise_g,
+                              -mise_g),
+      )
+    
+    text = sum(stat$gain_place) + sum(stat$gain_gagnant)
+    
+    infoBox(
+      "Gains totaux : ", paste0(round(text, 2), "€"), icon = icon("credit-card", lib = "glyphicon"),
+      color = "yellow"
+    )
+    
+  })
+  
+  
+  
   
   filtered_backtest <- reactive({
+    
     filtered <- result %>% 
-      filter(Proba >= input$tresh2/100,
-             rank_P1 <= input$rank_tresh)
+      filter(P1 >= input$tresh2/100,
+             PP >= input$treshPP/100,
+             rank_P1 <= input$rank_tresh,
+             rank_PP <= input$rank_treshPP,
+             cote <= input$cote_max)
     
     mise_p = input$SP
     mise_g = input$SG
@@ -604,6 +786,132 @@ server <- function(input, output, session) {
     
   })
   
+  output$roi <- renderInfoBox({
+    
+    filtered <- result %>% 
+      filter(P1 >= input$tresh2/100,
+             PP >= input$treshPP/100,
+             rank_P1 <= input$rank_tresh,
+             rank_PP <= input$rank_treshPP,
+             cote <= input$cote_max)
+    
+    mise_p = input$SP
+    mise_g = input$SG
+    
+    stat = filtered %>%
+      mutate(
+        gain_place = ifelse(P > 0,
+                            (P*mise_p)-mise_p,
+                            -mise_p),
+        gain_gagnant = ifelse(G > 0,
+                              (G*mise_g)-mise_g,
+                              -mise_g),
+      )
+    
+    text =  (sum(stat$gain_place) + sum(stat$gain_gagnant)) / ((nrow(filtered)*input$SP) + (nrow(filtered)*input$SG))
+    
+    
+    infoBox(
+      "ROI total: ", paste0(round(text, 2)*100,"%"), icon = icon("credit-card", lib = "glyphicon"),
+      color = "yellow"
+    )
+    
+  })
+  
+  output$roi_G <- renderInfoBox({
+    
+    filtered <- result %>% 
+      filter(P1 >= input$tresh2/100,
+             PP >= input$treshPP/100,
+             rank_P1 <= input$rank_tresh,
+             rank_PP <= input$rank_treshPP,
+             cote <= input$cote_max)
+    
+    mise_g = input$SG
+    
+    stat = filtered %>%
+      mutate(
+        gain_gagnant = ifelse(G > 0,
+                              (G*mise_g)-mise_g,
+                              -mise_g)
+      )
+    
+    text =  sum(stat$gain_gagnant) / (nrow(filtered)*input$SG)
+    
+    
+    infoBox(
+      "ROI SG: ", paste0(round(text, 2)*100,"%"), icon = icon("credit-card", lib = "glyphicon"),
+      color = "yellow"
+    )
+    
+  })
+  
+  output$roi_P <- renderInfoBox({
+    
+    filtered <- result %>% 
+      filter(P1 >= input$tresh2/100,
+             PP >= input$treshPP/100,
+             rank_P1 <= input$rank_tresh,
+             rank_PP <= input$rank_treshPP,
+             cote <= input$cote_max)
+    
+    mise_p = input$SP
+    
+    stat = filtered %>%
+      mutate(
+        gain_place = ifelse(P > 0,
+                            (P*mise_p)-mise_p,
+                            -mise_p)
+      )
+    
+    
+    text =  sum(stat$gain_place) / (nrow(filtered)*input$SP)
+    
+    
+    infoBox(
+      "ROI SP: ", paste0(round(text, 2)*100,"%"), icon = icon("credit-card", lib = "glyphicon"),
+      color = "yellow"
+    )
+    
+  })
+  
+  output$roi_moyen <- renderInfoBox({
+    
+    filtered <- result %>% 
+      filter(P1 >= input$tresh2/100,
+             PP >= input$treshPP/100,
+             rank_P1 <= input$rank_tresh,
+             rank_PP <= input$rank_treshPP,
+             cote <= input$cote_max)
+    
+    mise_p = input$SP
+    mise_g = input$SG
+    
+    stat = filtered %>%
+      mutate(
+        gain_place = ifelse(P > 0,
+                            (P*mise_p)-mise_p,
+                            -mise_p),
+        gain_gagnant = ifelse(G > 0,
+                              (G*mise_g)-mise_g,
+                              -mise_g),
+      ) %>% 
+      group_by(raceDate) %>% 
+      summarise(paris = n(),
+                benef = sum(gain_place, gain_gagnant)) %>% 
+      ungroup() %>% 
+      mutate(ROI = benef / (paris*mise_p + paris*mise_g))
+    
+    
+    text =  mean(stat$ROI)
+    
+    
+    infoBox(
+      "ROI moyen par jour: ", paste0(round(text, 2)*100,"%"), icon = icon("credit-card", lib = "glyphicon"),
+      color = "yellow"
+    )
+    
+  })
   
   output$plot_backtest <- renderPlot({
     
@@ -612,6 +920,8 @@ server <- function(input, output, session) {
     if (nrow(filtered) == 0 | !values$authenticated) {
       return(NULL)
     }
+    
+    filtered$raceDate = as.Date(filtered$raceDate)
     
     ggplot(filtered, aes(x = raceDate, y = total))+ 
       geom_line(aes(color='Total')) +

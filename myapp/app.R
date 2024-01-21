@@ -34,10 +34,10 @@ result[,ZETURF_liveOdd:= as.numeric(ZETURF_liveOdd)]
 
 
 result[, cote := ifelse(!is.na(PMU_fr_liveOdd), PMU_fr_liveOdd,
-                        ifelse(!is.na(PMU_liveOdd), PMU_liveOdd,
-                               ifelse(!is.na(ZETURF_liveOdd), ZETURF_liveOdd,
-                                      ifelse(!is.na(GENYBET_liveOdd), GENYBET_liveOdd,
-                                             ifelse(!is.na(SOREC_liveOdd), SOREC_liveOdd, BETCLIC_liveOdd)))))]
+                    ifelse(!is.na(PMU_liveOdd), PMU_liveOdd,
+                           ifelse(!is.na(ZETURF_liveOdd), ZETURF_liveOdd,
+                                  ifelse(!is.na(GENYBET_liveOdd), GENYBET_liveOdd,
+                                         ifelse(!is.na(SOREC_liveOdd), SOREC_liveOdd, BETCLIC_liveOdd)))))]
 
 result = result %>%
   group_by(raceDate, C_uuid) %>%
@@ -72,7 +72,7 @@ rating_stars <- function(i) {
   div_out <- div(title = label, "aria-label" = label, role = "img", stars)
   
   glue::glue(as.character(div_out) %>% 
-               gt::html())
+    gt::html())
 }
 
 ui <- fluidPage(
@@ -98,36 +98,36 @@ ui <- fluidPage(
                          fluidRow(plotOutput("mychart")),
                          hr(),
                          fluidRow(gt_output("mytable"))))),
-    # tabPanel("Chevaux à jouer",
-    #          
-    #          fluidRow(
-    #            div(id = "Sidebar", sidebarPanel(width = 12,
-    #                                             fluidRow( sliderInput("tresh",
-    #                                                                   label="Proba mini.",
-    #                                                                   min = 0, max = 100, post  = " %",
-    #                                                                   value = 80))))),
-    #          
-    #          mainPanel(width = '100%',
-    #                    fluidRow(gt_output("mytable_today"))
-    #                    
-    #          )),
+    tabPanel("Chevaux à jouer",
+
+             fluidRow(
+               div(id = "Sidebar", sidebarPanel(width = 12,
+                                                fluidRow( sliderInput("tresh",
+                                                                      label="Proba mini. placé",
+                                                                      min = 0, max = 100, post  = " %",
+                                                                      value = 60))))),
+
+             mainPanel(width = '100%',
+                       fluidRow(gt_output("mytable_today"))
+
+             )),
     tabPanel("Backtest",
              
              fluidRow(
                div(id = "Sidebar_back", sidebarPanel(width = 12,
                                                      fluidRow( column(2,sliderInput("tresh2",
-                                                                                    label="Proba mini. P1",
-                                                                                    min = 0, max = 100, post  = " %",
-                                                                                    value = 10)),
+                                                                           label="Proba mini. P1",
+                                                                           min = 0, max = 100, post  = " %",
+                                                                           value = 10)),
                                                                column(2,sliderInput("treshPP",
-                                                                                    label="Proba mini. PP",
-                                                                                    min = 0, max = 100, post  = " %",
-                                                                                    value = 50)),
+                                                                           label="Proba mini. PP",
+                                                                           min = 0, max = 100, post  = " %",
+                                                                           value = 50)),
                                                                column(2,sliderInput("cote_max",
                                                                                     label="Cote max",
                                                                                     min = 1.1, max = 100, post  = " Є",
                                                                                     value = 20))
-                                                     ),
+                                                               ),
                                                      fluidRow(
                                                        column(2, numericInput("SG", "Mise G:", 2, min = 0, max = 1000)),
                                                        column(2, numericInput("SP", "Mise P:", 8, min = 0, max = 1000)),
@@ -137,14 +137,14 @@ ui <- fluidPage(
              mainPanel(width = '100%',
                        dashboardBody(
                          fluidRow(
-                           infoBoxOutput('sg_stat'),
-                           infoBoxOutput('total_paris'),
-                           infoBoxOutput('roi_G')
+                         infoBoxOutput('sg_stat'),
+                         infoBoxOutput('total_paris'),
+                         infoBoxOutput('roi_G')
                          ),
                          fluidRow(
-                           infoBoxOutput('sp_stat'),
-                           infoBoxOutput('total_dep'),
-                           infoBoxOutput('roi_P')
+                         infoBoxOutput('sp_stat'),
+                         infoBoxOutput('total_dep'),
+                         infoBoxOutput('roi_P')
                          ),
                          fluidRow(
                            infoBoxOutput('roi'),
@@ -529,9 +529,9 @@ server <- function(input, output, session) {
         jour_last_course~ px(90),
         everything() ~ px(90)) %>% 
       cols_hide(c(driver_ratio_topp_evol,
-                  trainer_ratio_topp_evol,
-                  PREP_D4,
-                  CLASS_INF))
+                trainer_ratio_topp_evol,
+                PREP_D4,
+                CLASS_INF))
     
     #   datatable(
     #   filtered %>% 
@@ -562,7 +562,7 @@ server <- function(input, output, session) {
   
   output$mytable_today <- render_gt({
     
-    filtered <- filter(data, .pred_win >= input$tresh/100)
+    filtered <- filter(data, PP >= input$tresh/100)
     
     if (nrow(filtered) == 0 | !values$authenticated) {
       return(NULL)
@@ -572,21 +572,44 @@ server <- function(input, output, session) {
       mutate(id = paste0('R',R_pmuNumber, 'C', C_number)) %>% 
       select(id, C_time, R_name, C_name,
              saddle, horseName, trainerName, jockeyName, 
-             jour_last_course,
+             jour_last_course, CLASS_INF, PREP_D4, P1, PP) %>% 
              # fav_ko_last, outsider_last,
-             .pred_win) %>%
-      arrange(desc(.pred_win)) %>%  
+      arrange(desc(PP)) %>%  
       mutate(#.pred_win = formattable::percent(.pred_win),
-        .pred_win = .pred_win*100) %>% 
+        PP = PP*100,
+        P1 = P1*100,
+        D4 = ifelse(PREP_D4 == 1, 'star', ''),
+        INF = ifelse(CLASS_INF == 1, 'circle-down', '')) %>% 
       gt() %>%
       gt_theme_espn() %>% 
+      gt_fa_column(D4) %>% 
+      gt_fa_column(INF) %>% 
+      cols_merge(
+        columns = c(horseName, jockeyName, trainerName),
+        pattern = "{1};{2};{3}"
+      ) %>% 
+      text_transform(
+        locations = cells_body(
+          columns = c(horseName)
+        ),
+        fn = function(x){
+          
+          horseName <- word(x, 1, sep = ";")
+          jockeyName <- word(x, 2, sep = ";")
+          trainerName <- word(x, 3, sep = ";")
+          glue::glue(
+            "<div><span style='font-weight:bold;font-variant:small-caps;font-size:14px'>{horseName}</div>
+        <div><span style ='font-weight:bold;color:grey;font-size:12px'>{jockeyName}</span></div>
+             <div><span style ='font-weight:bold;color:grey;font-size:10px'>{trainerName}</span></div>"
+          )
+        }
+      ) %>% 
       cols_label(
         saddle = "Numéros",
-        C_time = 'Heure',
-        .pred_win = 'Proba',
         horseName = 'Cheval',
-        trainerName = 'Entr.',
-        jockeyName = 'Jockey', 
+        C_time = 'Heure',
+        P1 = 'Proba<br>Gagnant',
+        PP = 'Proba<br>Placé',
         jour_last_course = 'Repos',
         R_name = 'Réunion',
         C_name = 'Course',
@@ -596,7 +619,17 @@ server <- function(input, output, session) {
         .fn = md) %>% 
       # gt_color_rows(.pred_win, palette = "ggsci::blue_material", domain = c(0,1)) %>% 
       gt_plt_bar_pct(
-        column = .pred_win,
+        column = P1,
+        scaled = TRUE,
+        labels = TRUE,
+        # decimals = 3,
+        label_cutoff = 0.1,
+        fill = "#b8711a", background = "lightblue",
+        font_size = '13px'
+        # height = '17px'
+      ) %>% 
+      gt_plt_bar_pct(
+        column = PP,
         scaled = TRUE,
         labels = TRUE,
         # decimals = 3,
@@ -614,27 +647,19 @@ server <- function(input, output, session) {
           columns = horseName,
         )
       ) %>% 
-      tab_style(
-        style = list(
-          # cell_fill(color = "#F9E3D6"),
-          cell_text(style = "oblique", size = px(12))
-        ),
-        locations = cells_body(
-          columns = c(trainerName, jockeyName, jour_last_course)
-        )
-      ) %>% 
       cols_width(
-        saddle ~ px(60),
+        saddle ~ px(80),
         id ~ px(50),
         C_time~ px(50),
-        .pred_win ~ px(120),
+        P1 ~ px(120),
+        PP ~ px(120),
         trainerName ~ px(60),
         jockeyName ~ px(60),
         jour_last_course~ px(50),
-        everything() ~ px(90)) 
-    
-    
-    
+        everything() ~ px(90)) %>% 
+      cols_hide(c(
+                  PREP_D4,
+                  CLASS_INF))
     
   })
   
@@ -901,7 +926,7 @@ server <- function(input, output, session) {
                 benef = sum(gain_place, gain_gagnant)) %>% 
       ungroup() %>% 
       mutate(ROI = benef / (paris*mise_p + paris*mise_g))
-    
+      
     
     text =  mean(stat$ROI)
     
